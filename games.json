@@ -5,6 +5,12 @@
       "title": "בלונים",
       "emoji": "🎈",
       "color": "#8FD8FF"
+    },
+    {
+      "id": "unicorn-merge",
+      "title": "Unicorn Merge",
+      "emoji": "🦄",
+      "color": "#FFB3D9"
     }
   ]
 }
