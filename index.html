@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>המשחקים שלי</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2B1845">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="המשחקים שלי">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F3EEFF;
+    --ink: #2B1845;
+    --muted: #6F5E8C;
+    --line: #DCD0F5;
+    --ok: #1F9E8F;
+    --warn: #C2410C;
+    --shadow: #2B1845;
+    color-scheme: light dark;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1E1230; --ink: #F3EEFF; --muted: #B8A8D6; --line: #3D2A5C;
+      --ok: #4FD1C5; --warn: #FDBA74; --shadow: #0A0512;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1E1230; --ink: #F3EEFF; --muted: #B8A8D6; --line: #3D2A5C;
+    --ok: #4FD1C5; --warn: #FDBA74; --shadow: #0A0512;
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Rubik", "Arial Hebrew", "Segoe UI", system-ui, sans-serif;
+    font-weight: 500;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none; user-select: none;
+    overscroll-behavior: none;
+  }
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px max(20px, env(safe-area-inset-right, 0px)) 40px max(20px, env(safe-area-inset-left, 0px));
+  }
+  header {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 32px;
+  }
+  h1 {
+    font-weight: 800;
+    font-size: clamp(2.2rem, 7vw, 3.6rem);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+  .status { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 0.95rem; }
+  .status .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+  .status.ready .dot { background: var(--ok); }
+  .status.offline .dot { background: var(--warn); }
+  #refresh {
+    font: inherit; font-size: 1.3rem; line-height: 1;
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 2px solid var(--line); background: transparent; color: var(--ink);
+    cursor: pointer;
+  }
+  #refresh.spin { animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(-360deg); } }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr));
+    gap: 28px 22px;
+  }
+  .tile {
+    --c: #FF5FA2;
+    --tilt: 0deg;
+    appearance: none; border: 0; font: inherit; color: #2B1845; cursor: pointer;
+    background: var(--c);
+    border-radius: 26px;
+    aspect-ratio: 1;
+    padding: 16px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+    transform: rotate(var(--tilt));
+    box-shadow: 0 6px 0 var(--shadow);
+    transition: transform .12s ease, box-shadow .12s ease;
+    position: relative;
+  }
+  .tile:active { transform: rotate(0deg) translateY(4px) scale(.97); box-shadow: 0 2px 0 var(--shadow); }
+  .tile:focus-visible { outline: 4px solid var(--ink); outline-offset: 5px; }
+  .tile .emoji { font-size: clamp(3rem, 12vw, 4.4rem); line-height: 1; }
+  .tile .name { font-weight: 800; font-size: 1.15rem; text-align: center; line-height: 1.15; }
+  .tile.missing { filter: grayscale(1); opacity: .55; cursor: not-allowed; }
+  .tile.missing::after {
+    content: "חסר קובץ"; position: absolute; bottom: 10px;
+    font-size: .8rem; background: #fff; border-radius: 99px; padding: 2px 10px;
+  }
+
+  .message { color: var(--muted); max-width: 46ch; line-height: 1.6; }
+  .message code { direction: ltr; unicode-bidi: embed; background: var(--line); padding: 1px 6px; border-radius: 6px; }
+
+  #player { position: fixed; inset: 0; background: #000; z-index: 10; }
+  #player[hidden] { display: none; }
+  #frame { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+  #home {
+    position: fixed; z-index: 11;
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 0; background: rgba(43, 24, 69, .55); color: #fff;
+    font-size: 1.35rem; line-height: 1; cursor: pointer;
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  }
+  #home.top-left     { top: calc(env(safe-area-inset-top, 0px) + 10px);    left: calc(env(safe-area-inset-left, 0px) + 10px); }
+  #home.top-right    { top: calc(env(safe-area-inset-top, 0px) + 10px);    right: calc(env(safe-area-inset-right, 0px) + 10px); }
+  #home.bottom-left  { bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); left: calc(env(safe-area-inset-left, 0px) + 10px); }
+  #home.bottom-right { bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); right: calc(env(safe-area-inset-right, 0px) + 10px); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tile { transform: none; transition: none; }
+    #refresh.spin { animation: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>המשחקים שלי</h1>
+    <div class="status" id="statusBox">
+      <span class="dot"></span>
+      <span id="statusText">טוען…</span>
+      <button id="refresh" aria-label="בדיקת משחקים חדשים" title="בדיקת משחקים חדשים">↻</button>
+    </div>
+  </header>
+  <div class="grid" id="grid"></div>
+  <p class="message" id="message" hidden></p>
+</main>
+
+<div id="player" hidden>
+  <iframe id="frame" title="משחק" allow="autoplay; fullscreen"></iframe>
+  <button id="home" class="top-left" aria-label="חזרה למשחקים">⌂</button>
+</div>
+
+<script>
+  const CACHE = 'games-hub';
+  const SHELL = ['./', 'index.html', 'games.json', 'manifest.json',
+                 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
+  const TILTS = ['-3deg', '2deg', '-1.5deg', '3deg', '-2.5deg', '1deg'];
+
+  const grid = document.getElementById('grid');
+  const message = document.getElementById('message');
+  const statusBox = document.getElementById('statusBox');
+  const statusText = document.getElementById('statusText');
+  const refreshBtn = document.getElementById('refresh');
+  const player = document.getElementById('player');
+  const frame = document.getElementById('frame');
+  const homeBtn = document.getElementById('home');
+
+  let games = [];
+  const missing = new Set();
+
+  const pathOf = g => g.path || `games/${g.id}/index.html`;
+
+  function setStatus(kind, text) {
+    statusBox.className = 'status ' + (kind || '');
+    statusText.textContent = text;
+  }
+
+  async function loadGames() {
+    const res = await fetch('games.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error('לא נמצא הקובץ games.json');
+    let data;
+    try { data = JSON.parse(await res.text()); }
+    catch (e) { throw new Error('יש שגיאת כתיב בקובץ games.json (בדרך כלל פסיק חסר או מיותר). ' + e.message); }
+    const list = Array.isArray(data) ? data : data.games;
+    if (!Array.isArray(list)) throw new Error('בקובץ games.json חסרה הרשימה "games"');
+    return list.filter(g => g && g.id);
+  }
+
+  function render() {
+    grid.innerHTML = '';
+    games.forEach((g, i) => {
+      const b = document.createElement('button');
+      b.className = 'tile' + (missing.has(g.id) ? ' missing' : '');
+      b.style.setProperty('--c', g.color || '#FF5FA2');
+      b.style.setProperty('--tilt', TILTS[i % TILTS.length]);
+      b.innerHTML = `<span class="emoji" aria-hidden="true"></span><span class="name"></span>`;
+      b.querySelector('.emoji').textContent = g.emoji || '🎮';
+      b.querySelector('.name').textContent = g.title || g.id;
+      b.addEventListener('click', () => { if (!missing.has(g.id)) location.hash = 'play=' + encodeURIComponent(g.id); });
+      grid.appendChild(b);
+    });
+    if (!games.length) {
+      message.hidden = false;
+      message.innerHTML = 'אין עדיין משחקים. מוסיפים משחק בקובץ <code>games.json</code> ומעלים אותו לתיקייה <code>games</code>.';
+    }
+  }
+
+  function showError(err) {
+    message.hidden = false;
+    message.textContent = err.message;
+    setStatus('offline', 'יש בעיה ברשימת המשחקים');
+  }
+
+  // Download every game (and its listed assets) into the offline cache.
+  async function syncOffline() {
+    if (!('caches' in window)) { setStatus('', 'הדפדפן לא תומך במצב אופליין'); return; }
+    if (!navigator.onLine) { setStatus('offline', 'אופליין: משחקים שמורים'); return; }
+    setStatus('', 'שומר למצב אופליין…');
+    const cache = await caches.open(CACHE);
+    let saved = 0;
+    missing.clear();
+    await Promise.all(SHELL.map(u => cache.add(u).catch(() => {})));
+    for (const g of games) {
+      const urls = [pathOf(g), ...(g.assets || [])];
+      let ok = true;
+      for (const u of urls) {
+        try {
+          const cross = /^https?:/.test(u) && !u.startsWith(location.origin);
+          const res = await fetch(u, cross ? { mode: 'no-cors' } : { cache: 'reload' });
+          if (res.ok || res.type === 'opaque') await cache.put(u, res);
+          else { ok = false; if (u === pathOf(g)) missing.add(g.id); }
+        } catch { ok = false; }
+      }
+      if (ok) saved++;
+    }
+    render();
+    setStatus(saved === games.length ? 'ready' : 'offline',
+      saved === games.length
+        ? (saved === 1 ? 'המשחק זמין גם אופליין' : `${saved} משחקים זמינים גם אופליין`)
+        : `${saved} מתוך ${games.length} משחקים זמינים אופליין`);
+  }
+
+  function openGame(id) {
+    const g = games.find(x => x.id === id);
+    if (!g) return closeGame();
+    homeBtn.className = g.homeCorner || 'top-left';
+    frame.src = pathOf(g);
+    player.hidden = false;
+    document.body.style.overflow = 'hidden';
+    frame.focus();
+  }
+
+  function closeGame() {
+    player.hidden = true;
+    frame.src = 'about:blank';   // stops sounds and timers of the game
+    document.body.style.overflow = '';
+  }
+
+  function route() {
+    const m = location.hash.match(/^#play=(.+)$/);
+    m ? openGame(decodeURIComponent(m[1])) : closeGame();
+  }
+
+  homeBtn.addEventListener('click', () => { history.replaceState(null, '', location.pathname); route(); });
+  window.addEventListener('hashchange', route);
+  window.addEventListener('online', syncOffline);
+  window.addEventListener('offline', () => setStatus('offline', 'אופליין: משחקים שמורים'));
+
+  async function start() {
+    refreshBtn.classList.add('spin');
+    try {
+      games = await loadGames();
+      message.hidden = true;
+      render();
+      route();
+      await syncOffline();
+    } catch (err) { showError(err); }
+    refreshBtn.classList.remove('spin');
+  }
+  refreshBtn.addEventListener('click', start);
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
+  }
+  start();
+</script>
+</body>
+</html>
