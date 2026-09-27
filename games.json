@@ -1,11 +1,5 @@
 {
   "games": [
-//    {
- //     "id": "balloons",
-   //   "title": "בלונים",
-      //"emoji": "🎈",
-      //"color": "#8FD8FF"
-//    },
     {
       "id": "unicorn-merge",
       "title": "Unicorn Merge",
