@@ -11,6 +11,12 @@
       "title": "Sparkle 2048",
       "emoji": "💖",
       "color": "#FF85BB"
+    },
+    {
+      "id": "unicorn-clock",
+      "title": "Unicorn Clock",
+      "emoji": "🕐",
+      "color": "#D9C8FF"
     }
   ]
 }
