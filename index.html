@@ -1,15 +1,15 @@
 <!doctype html>
-<html lang="he" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>המשחקים שלי</title>
+<title>My Games</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2B1845">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="המשחקים שלי">
+<meta name="apple-mobile-web-app-title" content="My Games">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -44,7 +44,7 @@
   body {
     background: var(--bg);
     color: var(--ink);
-    font-family: "Rubik", "Arial Hebrew", "Segoe UI", system-ui, sans-serif;
+    font-family: "Rubik", "Segoe UI", system-ui, sans-serif;
     font-weight: 500;
     -webkit-tap-highlight-color: transparent;
     -webkit-user-select: none; user-select: none;
@@ -104,7 +104,7 @@
   .tile .name { font-weight: 800; font-size: 1.15rem; text-align: center; line-height: 1.15; }
   .tile.missing { filter: grayscale(1); opacity: .55; cursor: not-allowed; }
   .tile.missing::after {
-    content: "חסר קובץ"; position: absolute; bottom: 10px;
+    content: "File missing"; position: absolute; bottom: 10px;
     font-size: .8rem; background: #fff; border-radius: 99px; padding: 2px 10px;
   }
 
@@ -126,20 +126,141 @@
   #home.bottom-left  { bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); left: calc(env(safe-area-inset-left, 0px) + 10px); }
   #home.bottom-right { bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); right: calc(env(safe-area-inset-right, 0px) + 10px); }
 
+  input, textarea { -webkit-user-select: text; user-select: text; }
+
+  /* ---------- Parent controls ---------- */
+  .parent-btn {
+    font: inherit; font-size: .95rem; line-height: 1;
+    height: 44px; padding: 0 14px; border-radius: 99px;
+    border: 2px solid var(--line); background: transparent; color: var(--muted);
+    cursor: pointer;
+  }
+  .time-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--line); color: var(--ink);
+    border-radius: 99px; padding: 6px 14px; font-size: 1rem;
+  }
+  .time-pill[hidden] { display: none; }
+  .time-pill.low { background: #FFD6A5; color: #2B1845; }
+
+  .overlay {
+    position: fixed; inset: 0; z-index: 9;
+    background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; padding: 24px; text-align: center;
+  }
+  .overlay[hidden], .modal[hidden] { display: none; }
+  .overlay .big { font-size: 6rem; line-height: 1; }
+  .overlay h2 { font-weight: 800; font-size: clamp(1.8rem, 6vw, 2.6rem); margin: 0; }
+  .overlay p { color: var(--muted); margin: 0 0 12px; font-size: 1.15rem; }
+
+  .modal {
+    position: fixed; inset: 0; z-index: 20;
+    background: rgba(20, 10, 35, .55);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  .sheet {
+    background: var(--bg); color: var(--ink);
+    border-radius: 24px; padding: 22px;
+    width: min(100%, 420px); max-height: 100%; overflow-y: auto;
+    box-shadow: 0 10px 0 var(--shadow);
+  }
+  .sheet.wide { width: min(100%, 640px); }
+  .sheet h2 { font-weight: 800; margin: 0 0 6px; font-size: 1.6rem; }
+  .sheet h3 { font-weight: 800; margin: 0 0 10px; font-size: 1.2rem; }
+  .sheet p { color: var(--muted); margin: 0 0 12px; line-height: 1.5; }
+  .sheet section { border-top: 2px solid var(--line); padding-top: 16px; margin-top: 16px; }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .sheet button, .sheet input {
+    font: inherit; color: var(--ink);
+    border-radius: 12px; border: 2px solid var(--line); background: transparent;
+    min-height: 40px; padding: 4px 12px;
+  }
+  .sheet button { cursor: pointer; }
+  .sheet button.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .sheet button.danger { color: var(--warn); border-color: currentColor; }
+  .sheet input[type="number"] { width: 5.5em; text-align: center; }
+  .sheet input[type="radio"], .sheet input[type="checkbox"] { min-height: 0; width: 20px; height: 20px; accent-color: var(--ok); }
+
+  .problem { direction: ltr; font-weight: 800; font-size: 2.2rem; text-align: center; margin: 8px 0 14px; }
+  .gate-form { display: flex; gap: 10px; }
+  .gate-form input { flex: 1; min-width: 0; font-size: 1.4rem; text-align: center; direction: ltr; }
+  .gate-error { color: var(--warn) !important; font-weight: 800; }
+  .gate-error[hidden] { display: none; }
+  .shake { animation: shake .35s; }
+  @keyframes shake { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+
+  .summary { font-weight: 800; color: var(--ink) !important; }
+  .opt { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+  .sub { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 10px 30px; color: var(--muted); }
+  .sub[hidden] { display: none; }
+
+  .game-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .game-row {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 10px 12px; border-radius: 16px; background: var(--line);
+  }
+  .game-row .g-emoji { font-size: 1.8rem; line-height: 1; }
+  .game-row .g-name { flex: 1; font-weight: 800; min-width: 6em; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .game-row.off .g-emoji, .game-row.off .g-name { opacity: .45; }
+
+  /* ---------- Promoted game tile ---------- */
+  .grid { grid-auto-flow: dense; }
+  .tile.promoted {
+    overflow: hidden;
+    border: 4px solid #FFD84D;
+    animation: glow 1.8s ease-in-out infinite;
+  }
+  @media (min-width: 400px) {
+    .tile.promoted { grid-column: span 2; aspect-ratio: 2 / 1; }
+  }
+  .tile.promoted .emoji { font-size: clamp(3.6rem, 14vw, 5.4rem); animation: bounce 1.2s ease-in-out infinite; }
+  .tile.promoted .name { font-size: 1.4rem; }
+  .tile.promoted::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.6) 50%, transparent 65%);
+    transform: translateX(-120%);
+    animation: shimmer 2.6s ease-in-out infinite;
+  }
+  .ribbon {
+    position: absolute; top: 20px; right: -44px; z-index: 1;
+    width: 170px; padding: 5px 0; text-align: center;
+    transform: rotate(45deg);
+    background: #FFD84D; color: #C0134F;
+    font-weight: 800; font-size: .95rem;
+    box-shadow: 0 3px 0 rgba(43, 24, 69, .35);
+  }
+  .spark { position: absolute; font-size: 1.4rem; pointer-events: none; animation: twinkle 1.6s ease-in-out infinite; }
+  .spark.s1 { top: 14%; left: 10%; }
+  .spark.s2 { bottom: 8%; left: 6%; animation-delay: .5s; }
+  .spark.s3 { top: 40%; right: 12%; animation-delay: 1s; }
+  @keyframes glow {
+    0%, 100% { box-shadow: 0 6px 0 var(--shadow), 0 0 0 0 rgba(255, 216, 77, .8); }
+    50%      { box-shadow: 0 6px 0 var(--shadow), 0 0 0 14px rgba(255, 216, 77, 0); }
+  }
+  @keyframes bounce { 0%, 100% { transform: translateY(0) rotate(0); } 30% { transform: translateY(-14px) rotate(-8deg); } 60% { transform: translateY(0) rotate(6deg); } }
+  @keyframes shimmer { 0%, 40% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+  @keyframes twinkle { 0%, 100% { opacity: .2; transform: scale(.6); } 50% { opacity: 1; transform: scale(1.2); } }
+
   @media (prefers-reduced-motion: reduce) {
     .tile { transform: none; transition: none; }
     #refresh.spin { animation: none; }
+    .tile.promoted, .tile.promoted .emoji, .tile.promoted::before, .spark, .shake { animation: none; }
   }
 </style>
 </head>
 <body>
 <main>
   <header>
-    <h1>המשחקים שלי</h1>
+    <h1>My Games</h1>
+    <span class="time-pill" id="timePill" hidden></span>
     <div class="status" id="statusBox">
       <span class="dot"></span>
-      <span id="statusText">טוען…</span>
-      <button id="refresh" aria-label="בדיקת משחקים חדשים" title="בדיקת משחקים חדשים">↻</button>
+      <span id="statusText">Loading…</span>
+      <button id="refresh" aria-label="Check for new games" title="Check for new games">↻</button>
+      <button class="parent-btn" data-parent>🔒 Parents</button>
     </div>
   </header>
   <div class="grid" id="grid"></div>
@@ -147,8 +268,66 @@
 </main>
 
 <div id="player" hidden>
-  <iframe id="frame" title="משחק" allow="autoplay; fullscreen"></iframe>
-  <button id="home" class="top-left" aria-label="חזרה למשחקים">⌂</button>
+  <iframe id="frame" title="Game" allow="autoplay; fullscreen"></iframe>
+  <button id="home" class="top-left" aria-label="Back to games">⌂</button>
+</div>
+
+<div class="overlay" id="lockScreen" hidden>
+  <div class="big" aria-hidden="true">🌙</div>
+  <h2>Game time is over</h2>
+  <p>You can ask Mom or Dad for more time</p>
+  <button class="parent-btn" data-parent>🔒 Parents</button>
+</div>
+
+<div class="modal" id="gate" hidden role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+  <div class="sheet" id="gateSheet">
+    <h2 id="gateTitle">Parents only</h2>
+    <p>Solve this problem to continue:</p>
+    <div class="problem" id="problem"></div>
+    <form class="gate-form" id="gateForm" autocomplete="off">
+      <input id="answer" inputmode="numeric" pattern="[0-9]*" aria-label="Answer">
+      <button class="primary">Enter</button>
+    </form>
+    <p class="gate-error" id="gateError" hidden>Not quite. Here is a new problem.</p>
+    <p><button type="button" data-close>Cancel</button></p>
+  </div>
+</div>
+
+<div class="modal" id="panel" hidden role="dialog" aria-modal="true" aria-labelledby="panelTitle">
+  <div class="sheet wide">
+    <div class="sheet-head">
+      <h2 id="panelTitle">Parental controls</h2>
+      <button class="primary" data-close>Done</button>
+    </div>
+
+    <section>
+      <h3>Play time</h3>
+      <p class="summary" id="summary"></p>
+      <label class="opt"><input type="radio" name="mode" value="none"> No limit</label>
+      <label class="opt"><input type="radio" name="mode" value="daily"> Daily limit</label>
+      <div class="sub" id="dailyBox">
+        <input type="number" id="dailyMin" min="1" max="720" inputmode="numeric"> minutes per day
+        · Played today: <b id="usedToday"></b>
+        <button type="button" id="resetUsage">Reset today</button>
+      </div>
+      <label class="opt"><input type="radio" name="mode" value="window"> Set time</label>
+      <div class="sub">
+        For the next <input type="number" id="forMin" min="1" max="720" value="30" inputmode="numeric"> minutes
+        <button type="button" id="grantFor">Allow</button>
+      </div>
+      <div class="sub">
+        Until <input type="time" id="untilTime" value="19:00">
+        <button type="button" id="grantUntil">Allow</button>
+      </div>
+      <p><button type="button" class="danger" id="lockNow">Lock now</button></p>
+    </section>
+
+    <section>
+      <h3>Games</h3>
+      <p>Hidden games don't appear on the screen. Promoted games get a ribbon, sparkles and animation, and appear first.</p>
+      <ul class="game-list" id="gameList"></ul>
+    </section>
+  </div>
 </div>
 
 <script>
@@ -169,6 +348,39 @@
   let games = [];
   const missing = new Set();
 
+  // ---------- Parent settings (saved on this device only) ----------
+  const PREFS_KEY = 'games-hub-parent';
+  const prefs = loadPrefs();
+
+  function loadPrefs() {
+    const base = { mode: 'none', dailyMin: 30, until: 0, hidden: [], promoted: [], usage: { day: '', ms: 0 } };
+    try { return Object.assign(base, JSON.parse(localStorage.getItem(PREFS_KEY)) || {}); }
+    catch { return base; }
+  }
+  function savePrefs() {
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch {}
+  }
+
+  const isHidden = id => prefs.hidden.includes(id);
+  const isPromoted = id => prefs.promoted.includes(id);
+
+  function today() {
+    const d = new Date();
+    return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  }
+  function usedMs() {
+    if (prefs.usage.day !== today()) prefs.usage = { day: today(), ms: 0 };
+    return prefs.usage.ms;
+  }
+  function remainingMs() {
+    if (prefs.mode === 'daily') return prefs.dailyMin * 60000 - usedMs();
+    if (prefs.mode === 'window') return prefs.until - Date.now();
+    return Infinity;
+  }
+  const isLocked = () => remainingMs() <= 0;
+  const clock = ts => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const minutes = ms => Math.max(0, Math.ceil(ms / 60000));
+
   const pathOf = g => g.path || `games/${g.id}/index.html`;
 
   function setStatus(kind, text) {
@@ -178,45 +390,59 @@
 
   async function loadGames() {
     const res = await fetch('games.json', { cache: 'no-store' });
-    if (!res.ok) throw new Error('לא נמצא הקובץ games.json');
+    if (!res.ok) throw new Error('The file games.json was not found');
     let data;
     try { data = JSON.parse(await res.text()); }
-    catch (e) { throw new Error('יש שגיאת כתיב בקובץ games.json (בדרך כלל פסיק חסר או מיותר). ' + e.message); }
+    catch (e) { throw new Error('There is a typo in games.json (usually a missing or extra comma). ' + e.message); }
     const list = Array.isArray(data) ? data : data.games;
-    if (!Array.isArray(list)) throw new Error('בקובץ games.json חסרה הרשימה "games"');
+    if (!Array.isArray(list)) throw new Error('The list "games" is missing from games.json');
     return list.filter(g => g && g.id);
   }
 
   function render() {
     grid.innerHTML = '';
-    games.forEach((g, i) => {
+    const shown = games.filter(g => !isHidden(g.id))
+      .sort((a, b) => isPromoted(b.id) - isPromoted(a.id));
+    shown.forEach((g, i) => {
       const b = document.createElement('button');
-      b.className = 'tile' + (missing.has(g.id) ? ' missing' : '');
+      b.className = 'tile' + (missing.has(g.id) ? ' missing' : '') + (isPromoted(g.id) ? ' promoted' : '');
       b.style.setProperty('--c', g.color || '#FF5FA2');
       b.style.setProperty('--tilt', TILTS[i % TILTS.length]);
       b.innerHTML = `<span class="emoji" aria-hidden="true"></span><span class="name"></span>`;
       b.querySelector('.emoji').textContent = g.emoji || '🎮';
       b.querySelector('.name').textContent = g.title || g.id;
+      if (isPromoted(g.id)) {
+        b.insertAdjacentHTML('beforeend',
+          '<span class="ribbon">⭐ Featured!</span>' +
+          '<span class="spark s1" aria-hidden="true">✨</span>' +
+          '<span class="spark s2" aria-hidden="true">✨</span>' +
+          '<span class="spark s3" aria-hidden="true">⭐</span>');
+      }
       b.addEventListener('click', () => { if (!missing.has(g.id)) location.hash = 'play=' + encodeURIComponent(g.id); });
       grid.appendChild(b);
     });
     if (!games.length) {
       message.hidden = false;
-      message.innerHTML = 'אין עדיין משחקים. מוסיפים משחק בקובץ <code>games.json</code> ומעלים אותו לתיקייה <code>games</code>.';
+      message.innerHTML = 'No games yet. Add a game to <code>games.json</code> and upload it to the <code>games</code> folder.';
+    } else if (!shown.length) {
+      message.hidden = false;
+      message.textContent = 'No games available right now.';
+    } else {
+      message.hidden = true;
     }
   }
 
   function showError(err) {
     message.hidden = false;
     message.textContent = err.message;
-    setStatus('offline', 'יש בעיה ברשימת המשחקים');
+    setStatus('offline', 'There is a problem with the games list');
   }
 
   // Download every game (and its listed assets) into the offline cache.
   async function syncOffline() {
-    if (!('caches' in window)) { setStatus('', 'הדפדפן לא תומך במצב אופליין'); return; }
-    if (!navigator.onLine) { setStatus('offline', 'אופליין: משחקים שמורים'); return; }
-    setStatus('', 'שומר למצב אופליין…');
+    if (!('caches' in window)) { setStatus('', 'This browser does not support offline mode'); return; }
+    if (!navigator.onLine) { setStatus('offline', 'Offline: using saved games'); return; }
+    setStatus('', 'Saving for offline…');
     const cache = await caches.open(CACHE);
     let saved = 0;
     missing.clear();
@@ -237,13 +463,13 @@
     render();
     setStatus(saved === games.length ? 'ready' : 'offline',
       saved === games.length
-        ? (saved === 1 ? 'המשחק זמין גם אופליין' : `${saved} משחקים זמינים גם אופליין`)
-        : `${saved} מתוך ${games.length} משחקים זמינים אופליין`);
+        ? (saved === 1 ? 'Game available offline' : `${saved} games available offline`)
+        : `${saved} of ${games.length} games available offline`);
   }
 
   function openGame(id) {
     const g = games.find(x => x.id === id);
-    if (!g) return closeGame();
+    if (!g || isHidden(g.id) || isLocked()) return goHome();
     homeBtn.className = g.homeCorner || 'top-left';
     frame.src = pathOf(g);
     player.hidden = false;
@@ -262,16 +488,20 @@
     m ? openGame(decodeURIComponent(m[1])) : closeGame();
   }
 
-  homeBtn.addEventListener('click', () => { history.replaceState(null, '', location.pathname); route(); });
+  function goHome() {
+    history.replaceState(null, '', location.pathname + location.search);
+    closeGame();
+  }
+
+  homeBtn.addEventListener('click', goHome);
   window.addEventListener('hashchange', route);
   window.addEventListener('online', syncOffline);
-  window.addEventListener('offline', () => setStatus('offline', 'אופליין: משחקים שמורים'));
+  window.addEventListener('offline', () => setStatus('offline', 'Offline: using saved games'));
 
   async function start() {
     refreshBtn.classList.add('spin');
     try {
       games = await loadGames();
-      message.hidden = true;
       render();
       route();
       await syncOffline();
@@ -284,6 +514,198 @@
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
   }
   start();
+
+  // ---------- Play-time tracking ----------
+  const timePill = document.getElementById('timePill');
+  const lockScreen = document.getElementById('lockScreen');
+  let lastTick = Date.now();
+
+  function tick() {
+    const now = Date.now();
+    const playing = !player.hidden && document.visibilityState === 'visible';
+    usedMs(); // rolls the counter over at midnight
+    if (playing) prefs.usage.ms += Math.min(now - lastTick, 5000);
+    lastTick = now;
+    savePrefs();
+
+    const locked = isLocked();
+    if (locked && !player.hidden) goHome();
+    lockScreen.hidden = !locked;
+
+    const left = remainingMs();
+    timePill.hidden = left === Infinity || locked;
+    timePill.classList.toggle('low', left < 5 * 60000);
+    timePill.textContent = prefs.mode === 'window' && left > 60 * 60000
+      ? `⏳ Play until ${clock(prefs.until)}`
+      : `⏳ ${minutes(left)} min left`;
+
+    if (!panel.hidden) updatePanelStatus();
+  }
+
+  // ---------- Parent gate: a math problem kids can't solve ----------
+  const gate = document.getElementById('gate');
+  const gateSheet = document.getElementById('gateSheet');
+  const problemEl = document.getElementById('problem');
+  const answerEl = document.getElementById('answer');
+  const gateError = document.getElementById('gateError');
+  const panel = document.getElementById('panel');
+  let answer = null;
+
+  const rand = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
+
+  function newProblem() {
+    const a = rand(13, 29), b = rand(6, 9), c = rand(11, 49);
+    const plus = Math.random() < .5;
+    problemEl.textContent = `${a} × ${b} ${plus ? '+' : '−'} ${c} = ?`;
+    answer = plus ? a * b + c : a * b - c;
+    answerEl.value = '';
+  }
+
+  function openGate() {
+    newProblem();
+    gateError.hidden = true;
+    gate.hidden = false;
+    answerEl.focus();
+  }
+
+  document.getElementById('gateForm').addEventListener('submit', e => {
+    e.preventDefault();
+    if (Number(answerEl.value.trim()) === answer && answerEl.value.trim() !== '') {
+      gate.hidden = true;
+      openPanel();
+      return;
+    }
+    gateError.hidden = false;
+    gateSheet.classList.remove('shake');
+    void gateSheet.offsetWidth;
+    gateSheet.classList.add('shake');
+    newProblem();
+    answerEl.focus();
+  });
+
+  document.querySelectorAll('[data-parent]').forEach(b => b.addEventListener('click', openGate));
+  document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => {
+    b.closest('.modal').hidden = true;
+    render();
+    tick();
+  }));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.querySelectorAll('.modal:not([hidden]) [data-close]').forEach(b => b.click());
+  });
+
+  // ---------- Parent panel ----------
+  const summaryEl = document.getElementById('summary');
+  const usedEl = document.getElementById('usedToday');
+  const dailyMinEl = document.getElementById('dailyMin');
+  const forMinEl = document.getElementById('forMin');
+  const untilEl = document.getElementById('untilTime');
+  const modeEls = document.querySelectorAll('input[name="mode"]');
+  const gameList = document.getElementById('gameList');
+
+  function openPanel() {
+    dailyMinEl.value = prefs.dailyMin;
+    renderGameList();
+    updatePanelStatus();
+    panel.hidden = false;
+  }
+
+  function updatePanelStatus() {
+    modeEls.forEach(r => { r.checked = r.value === prefs.mode; });
+    usedEl.textContent = `${Math.floor(usedMs() / 60000)} min`;
+    const left = remainingMs();
+    summaryEl.textContent =
+      prefs.mode === 'none' ? 'No time limit.' :
+      left <= 0 ? (prefs.mode === 'daily' ? 'Daily time is used up. Games are locked.' : 'Games are locked.') :
+      prefs.mode === 'daily' ? `${minutes(left)} of ${prefs.dailyMin} minutes left today.` :
+      `Play allowed until ${clock(prefs.until)} (${minutes(left)} min left).`;
+  }
+
+  function setMode(mode, until) {
+    prefs.mode = mode;
+    if (until !== undefined) prefs.until = until;
+    savePrefs();
+    tick();
+  }
+
+  modeEls.forEach(r => r.addEventListener('change', () => {
+    if (r.value === 'window') {
+      setMode('window', prefs.until > Date.now() ? prefs.until : Date.now() + (Number(forMinEl.value) || 30) * 60000);
+    } else {
+      setMode(r.value);
+    }
+  }));
+
+  dailyMinEl.addEventListener('change', () => {
+    const v = Math.round(Number(dailyMinEl.value));
+    if (v > 0) prefs.dailyMin = Math.min(v, 720);
+    dailyMinEl.value = prefs.dailyMin;
+    savePrefs();
+    tick();
+  });
+
+  document.getElementById('resetUsage').addEventListener('click', () => {
+    prefs.usage = { day: today(), ms: 0 };
+    savePrefs();
+    tick();
+  });
+
+  document.getElementById('grantFor').addEventListener('click', () => {
+    const v = Number(forMinEl.value);
+    if (v > 0) setMode('window', Date.now() + Math.min(v, 720) * 60000);
+  });
+
+  document.getElementById('grantUntil').addEventListener('click', () => {
+    const [h, m] = (untilEl.value || '').split(':').map(Number);
+    if (Number.isNaN(h) || Number.isNaN(m)) return;
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1); // time already passed: means tomorrow
+    setMode('window', d.getTime());
+  });
+
+  document.getElementById('lockNow').addEventListener('click', () => setMode('window', Date.now()));
+
+  function toggleIn(list, id, on) {
+    const i = list.indexOf(id);
+    if (on && i < 0) list.push(id);
+    if (!on && i >= 0) list.splice(i, 1);
+  }
+
+  function renderGameList() {
+    gameList.innerHTML = '';
+    if (!games.length) { gameList.innerHTML = '<li>No games in the list.</li>'; return; }
+    games.forEach(g => {
+      const li = document.createElement('li');
+      li.className = 'game-row' + (isHidden(g.id) ? ' off' : '');
+      li.innerHTML = `
+        <span class="g-emoji" aria-hidden="true"></span>
+        <span class="g-name"></span>
+        <label class="chip"><input type="checkbox" data-k="show"> Shown</label>
+        <label class="chip"><input type="checkbox" data-k="promo"> ⭐ Promoted</label>`;
+      li.querySelector('.g-emoji').textContent = g.emoji || '🎮';
+      li.querySelector('.g-name').textContent = g.title || g.id;
+      const show = li.querySelector('[data-k="show"]');
+      const promo = li.querySelector('[data-k="promo"]');
+      show.checked = !isHidden(g.id);
+      promo.checked = isPromoted(g.id);
+      show.addEventListener('change', () => {
+        toggleIn(prefs.hidden, g.id, !show.checked);
+        li.classList.toggle('off', !show.checked);
+        savePrefs();
+        render();
+      });
+      promo.addEventListener('change', () => {
+        toggleIn(prefs.promoted, g.id, promo.checked);
+        savePrefs();
+        render();
+      });
+      gameList.appendChild(li);
+    });
+  }
+
+  document.addEventListener('visibilitychange', () => { lastTick = Date.now(); });
+  setInterval(tick, 1000);
+  tick();
 </script>
 </body>
 </html>
