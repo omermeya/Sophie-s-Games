@@ -5,16 +5,16 @@
       <stop offset="0.55" stop-color="#D65DDE"/>
       <stop offset="1" stop-color="#FF7EB6"/>
     </linearGradient>
-    <linearGradient id="horn" x1="0" y1="1" x2="1" y2="0">
+    <linearGradient id="horn" x1="0" y1="1" x2="0" y2="0">
       <stop offset="0" stop-color="#FFB547"/>
       <stop offset="1" stop-color="#FFE989"/>
     </linearGradient>
-    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+    <radialGradient id="face" cx="0.5" cy="0.35" r="0.7">
       <stop offset="0" stop-color="#FFFFFF"/>
-      <stop offset="1" stop-color="#F4ECFF"/>
-    </linearGradient>
+      <stop offset="1" stop-color="#F3EAFF"/>
+    </radialGradient>
     <clipPath id="hornClip">
-      <path d="M258 172 L338 58 L304 190 Z"/>
+      <path d="M226 150 L256 30 L286 150 Z"/>
     </clipPath>
   </defs>
 
@@ -22,78 +22,94 @@
   <rect width="512" height="512" fill="url(#bg)"/>
 
   <!-- rainbow arc -->
-  <g fill="none" stroke-width="22" stroke-linecap="round" opacity="0.9">
-    <path d="M60 400 A196 196 0 0 1 452 400" stroke="#FF6B8B"/>
-    <path d="M82 400 A174 174 0 0 1 430 400" stroke="#FFB84D"/>
-    <path d="M104 400 A152 152 0 0 1 408 400" stroke="#FFE66B"/>
-    <path d="M126 400 A130 130 0 0 1 386 400" stroke="#7FE0A8"/>
-    <path d="M148 400 A108 108 0 0 1 364 400" stroke="#6FC3FF"/>
+  <g fill="none" stroke-width="20" stroke-linecap="round" opacity="0.85">
+    <path d="M40 470 A216 216 0 0 1 472 470" stroke="#FF6B8B"/>
+    <path d="M60 470 A196 196 0 0 1 452 470" stroke="#FFB84D"/>
+    <path d="M80 470 A176 176 0 0 1 432 470" stroke="#FFE66B"/>
+    <path d="M100 470 A156 156 0 0 1 412 470" stroke="#7FE0A8"/>
+    <path d="M120 470 A136 136 0 0 1 392 470" stroke="#6FC3FF"/>
   </g>
 
-  <!-- clouds under the unicorn -->
-  <g fill="#FFFFFF">
-    <circle cx="96" cy="418" r="40"/>
-    <circle cx="150" cy="430" r="34"/>
-    <circle cx="60" cy="440" r="30"/>
-    <circle cx="416" cy="418" r="40"/>
-    <circle cx="362" cy="430" r="34"/>
-    <circle cx="452" cy="440" r="30"/>
-    <rect x="30" y="430" width="160" height="40" rx="20"/>
-    <rect x="322" y="430" width="160" height="40" rx="20"/>
+  <!-- mane behind the head -->
+  <g stroke="#5B3A8C" stroke-width="7" stroke-linejoin="round">
+    <path d="M150 190 C100 220 96 300 118 350 C124 380 108 404 92 416 C140 426 176 396 180 350 Z" fill="#6FC3FF"/>
+    <path d="M362 190 C412 220 416 300 394 350 C388 380 404 404 420 416 C372 426 336 396 332 350 Z" fill="#B794F2"/>
+    <path d="M166 170 C122 190 116 250 134 292 C142 312 136 330 126 344 C166 346 190 318 190 280 Z" fill="#FF8CC6"/>
+    <path d="M346 170 C390 190 396 250 378 292 C370 312 376 330 386 344 C346 346 322 318 322 280 Z" fill="#FFD166"/>
   </g>
 
-  <!-- mane (behind head) -->
-  <g>
-    <path d="M300 150 C370 140 400 200 392 260 C388 300 400 330 420 350 C370 360 330 330 318 290 Z" fill="#6FC3FF"/>
-    <path d="M292 146 C350 130 380 180 374 230 C370 262 378 290 394 310 C350 318 318 290 306 250 Z" fill="#B794F2"/>
-    <path d="M270 150 C320 118 360 150 356 196 C354 226 360 248 372 266 C332 270 306 244 296 210 Z" fill="#FF8CC6"/>
-    <path d="M246 164 C280 126 330 128 332 166 C334 190 338 206 348 220 C314 222 290 204 282 180 Z" fill="#FFD166"/>
+  <!-- ears -->
+  <g stroke="#5B3A8C" stroke-width="8" stroke-linejoin="round">
+    <path d="M160 188 C148 150 150 112 162 92 C190 110 212 140 218 170 Z" fill="#FFFFFF"/>
+    <path d="M352 188 C364 150 362 112 350 92 C322 110 300 140 294 170 Z" fill="#FFFFFF"/>
   </g>
+  <path d="M170 172 C164 146 166 124 172 112 C188 126 200 146 204 164 Z" fill="#FFB6D9"/>
+  <path d="M342 172 C348 146 346 124 340 112 C324 126 312 146 308 164 Z" fill="#FFB6D9"/>
 
-  <!-- head + neck -->
-  <path d="M206 600
-           C204 420 214 380 206 350
-           C170 352 136 346 120 322
-           C102 296 116 266 146 250
-           C168 236 182 214 196 196
-           C220 164 262 150 298 162
-           C336 176 352 214 348 260
-           C344 310 330 360 336 600 Z"
+  <!-- head -->
+  <path d="M256 140
+           C340 140 372 200 370 262
+           C368 300 360 320 364 346
+           C372 410 318 448 256 448
+           C194 448 140 410 148 346
+           C152 320 144 300 142 262
+           C140 200 172 140 256 140 Z"
         fill="url(#face)" stroke="#5B3A8C" stroke-width="8" stroke-linejoin="round"/>
 
-  <!-- ear -->
-  <path d="M292 168 C300 132 318 116 330 110 C338 132 334 162 318 184 Z"
-        fill="#FFFFFF" stroke="#5B3A8C" stroke-width="8" stroke-linejoin="round"/>
-  <path d="M302 166 C308 144 318 132 324 128 C328 144 324 162 316 174 Z" fill="#FFB6D9"/>
+  <!-- muzzle -->
+  <ellipse cx="256" cy="372" rx="92" ry="62" fill="#FFD9EC"/>
 
   <!-- horn -->
-  <path d="M258 172 L338 58 L304 190 Z" fill="url(#horn)" stroke="#5B3A8C" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M226 150 L256 30 L286 150 Z" fill="url(#horn)" stroke="#5B3A8C" stroke-width="8" stroke-linejoin="round"/>
   <g clip-path="url(#hornClip)" stroke="#F29A2E" stroke-width="7" stroke-linecap="round">
-    <path d="M250 142 L330 172"/>
-    <path d="M266 116 L336 142"/>
-    <path d="M284 90 L342 112"/>
+    <path d="M220 128 L292 110"/>
+    <path d="M226 96 L292 80"/>
+    <path d="M236 66 L292 52"/>
   </g>
 
-  <!-- front forelock -->
-  <path d="M232 178 C246 150 280 142 300 160 C286 162 272 176 268 196 C256 184 244 180 232 178 Z" fill="#FF8CC6" stroke="#5B3A8C" stroke-width="6" stroke-linejoin="round"/>
+  <!-- rainbow forelock -->
+  <g stroke="#5B3A8C" stroke-width="6" stroke-linejoin="round">
+    <path d="M256 150 C230 140 196 150 188 186 C206 176 222 178 236 188 C240 172 246 160 256 150 Z" fill="#FF8CC6"/>
+    <path d="M256 150 C282 140 316 150 324 186 C306 176 290 178 276 188 C272 172 266 160 256 150 Z" fill="#6FC3FF"/>
+  </g>
 
-  <!-- happy closed eye -->
-  <path d="M222 236 C232 252 252 252 262 236" fill="none" stroke="#5B3A8C" stroke-width="9" stroke-linecap="round"/>
-  <path d="M226 246 L218 256 M242 252 L240 264 M258 246 L264 256" stroke="#5B3A8C" stroke-width="6" stroke-linecap="round"/>
+  <!-- big open eyes looking at you -->
+  <g>
+    <ellipse cx="208" cy="266" rx="30" ry="36" fill="#3D2466"/>
+    <ellipse cx="304" cy="266" rx="30" ry="36" fill="#3D2466"/>
+    <ellipse cx="208" cy="274" rx="20" ry="24" fill="#7A4FD0"/>
+    <ellipse cx="304" cy="274" rx="20" ry="24" fill="#7A4FD0"/>
+    <circle cx="198" cy="250" r="11" fill="#FFFFFF"/>
+    <circle cx="294" cy="250" r="11" fill="#FFFFFF"/>
+    <circle cx="218" cy="284" r="5" fill="#FFFFFF"/>
+    <circle cx="314" cy="284" r="5" fill="#FFFFFF"/>
+  </g>
+  <!-- lashes -->
+  <g stroke="#3D2466" stroke-width="6" stroke-linecap="round">
+    <path d="M180 244 L166 234"/>
+    <path d="M184 234 L174 220"/>
+    <path d="M332 244 L346 234"/>
+    <path d="M328 234 L338 220"/>
+  </g>
 
-  <!-- cheek -->
-  <ellipse cx="230" cy="290" rx="20" ry="13" fill="#FFA3CF" opacity="0.85"/>
+  <!-- cheeks -->
+  <ellipse cx="170" cy="322" rx="22" ry="14" fill="#FF8CC6" opacity="0.7"/>
+  <ellipse cx="342" cy="322" rx="22" ry="14" fill="#FF8CC6" opacity="0.7"/>
 
-  <!-- nostril + smile -->
-  <ellipse cx="142" cy="300" rx="7" ry="5" fill="#5B3A8C"/>
-  <path d="M150 326 C164 336 184 334 194 322" fill="none" stroke="#5B3A8C" stroke-width="7" stroke-linecap="round"/>
+  <!-- nostrils -->
+  <ellipse cx="226" cy="352" rx="8" ry="6" fill="#C45A95"/>
+  <ellipse cx="286" cy="352" rx="8" ry="6" fill="#C45A95"/>
+
+  <!-- big happy smile -->
+  <path d="M206 378 C220 424 292 424 306 378 Z" fill="#8C2F6B" stroke="#5B3A8C" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M228 404 C240 392 272 392 284 404 C272 416 240 416 228 404 Z" fill="#FF6B9A"/>
 
   <!-- sparkles -->
   <g fill="#FFFFFF">
-    <path d="M118 120 L128 150 L158 160 L128 170 L118 200 L108 170 L78 160 L108 150 Z"/>
-    <path d="M410 150 L416 168 L434 174 L416 180 L410 198 L404 180 L386 174 L404 168 Z"/>
-    <path d="M178 84 L182 96 L194 100 L182 104 L178 116 L174 104 L162 100 L174 96 Z"/>
+    <path d="M88 96 L98 124 L126 134 L98 144 L88 172 L78 144 L50 134 L78 124 Z"/>
+    <path d="M424 88 L431 108 L451 115 L431 122 L424 142 L417 122 L397 115 L417 108 Z"/>
+    <path d="M438 232 L442 244 L454 248 L442 252 L438 264 L434 252 L422 248 L434 244 Z"/>
   </g>
-  <circle cx="400" cy="92" r="7" fill="#FFE66B"/>
-  <circle cx="96" cy="246" r="6" fill="#FFE66B"/>
+  <circle cx="372" cy="54" r="7" fill="#FFE66B"/>
+  <circle cx="70" cy="226" r="6" fill="#FFE66B"/>
 </svg>
