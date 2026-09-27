@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#F3E8FF">
+<title>Unicorn Clock</title>
+<!--
+  Unicorn Clock: a clock-reading game for little ones (4-5 years old).
+
+  Everything lives in this one file: no images, fonts, or network calls,
+  so it works fully offline inside the games hub.
+
+  Quick map of the code (search for the "=====" headers):
+    CONFIG ........ stages, pieces per puzzle, streak, wrong-answer rule, timings
+    STORAGE ....... saving progress in localStorage (always wrapped in try/catch)
+    SOUND ......... tiny Web Audio synth (no audio files)
+    VOICE ......... speechSynthesis wrapper (spoken instructions)
+    TIME LOGIC .... picking questions and answer options
+    DRAWING ....... clock face, unicorn drawings (inline SVG), backgrounds
+    UNICORNS ...... the list of collectible unicorn pictures (24 of them)
+    PUZZLE ........ jigsaw pieces, fly-in / fly-away animations
+    GAME FLOW ..... answering, celebrating, advancing stages
+    SCREENS ....... home, play, collection, parent reset
+-->
+<style>
+  /* ---------- Palette tokens ---------- */
+  :root{
+    --pink:#FFC8E1; --pink-d:#F27AB0;
+    --lav:#E6DAFF;  --lav-d:#9C7AD6;
+    --mint:#C9F5E3; --mint-d:#3FBF8F;
+    --sky:#CDEBFF;  --sky-d:#3FA3DC;
+    --gold:#FFD35C; --gold-d:#E8A92B;
+    --ink:#5B3F86;  --ink-soft:#8C73B3;
+    --card:#FFFFFF;
+    --hour:#F2559B;  /* hour hand: short & thick, pink   */
+    --minute:#2F9FD6;/* minute hand: long & thin, blue   */
+    --font: ui-rounded, "SF Pro Rounded", "Nunito", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+    color-scheme: light;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    overflow:hidden; font-family:var(--font); color:var(--ink);
+    background:linear-gradient(165deg,#FFE9F4 0%,#F1E6FF 50%,#DDF1FF 100%);
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+    touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+    -webkit-text-size-adjust:100%;
+  }
+  button{ font:inherit; color:inherit; touch-action:manipulation; cursor:pointer; }
+
+  /* Hidden holder for SVG pieces that are reused with <use>. Not display:none,
+     because Safari will not draw gradients referenced from a display:none tree. */
+  #svgDefs{ position:absolute; width:0; height:0; overflow:hidden; }
+
+  /* ---------- Screens ---------- */
+  .screen{
+    position:fixed; inset:0; display:none; flex-direction:column;
+    padding: calc(env(safe-area-inset-top,0px) + 10px) calc(env(safe-area-inset-right,0px) + 14px)
+             calc(env(safe-area-inset-bottom,0px) + 12px) calc(env(safe-area-inset-left,0px) + 14px);
+  }
+  .screen.active{ display:flex; }
+
+  /* Top bar. The left 64px stay empty: the games hub puts its ⌂ button there. */
+  .bar{ display:flex; align-items:center; gap:12px; min-height:64px; flex:0 0 auto; }
+  .bar-left{ width:56px; flex:0 0 56px; }
+  .bar-mid{ flex:1; display:flex; justify-content:center; align-items:center; min-width:0; }
+  .bar-right{ display:flex; gap:10px; }
+
+  .round-btn{
+    width:60px; height:60px; border-radius:50%; border:3px solid #fff; padding:0;
+    background:linear-gradient(180deg,#fff,#F3EAFF); color:var(--lav-d);
+    display:grid; place-items:center;
+    box-shadow:0 4px 0 #D6C4F5, 0 8px 18px rgba(156,122,214,.25);
+    transition:transform .2s cubic-bezier(.34,1.8,.5,1);
+  }
+  .round-btn:active{ transform:scale(.9); }
+  .round-btn svg{ width:30px; height:30px; }
+
+  /* ---------- Stage stars (1-4, never numbers) ---------- */
+  .stars{ display:flex; gap:8px; align-items:center; }
+  .stars svg{ width:44px; height:44px; transition:transform .3s; }
+  .stars .todo path{ fill:#fff; stroke:#D9CBF2; }
+  .stars .done path{ fill:var(--gold); stroke:var(--gold-d); }
+  .stars .current path{ fill:#FFF1C4; stroke:var(--gold-d); }
+  .stars .current{ animation:twinkle 1.6s ease-in-out infinite; }
+  .stars .pop{ animation:starPop .9s cubic-bezier(.34,1.8,.5,1); }
+  @keyframes twinkle{ 0%,100%{ transform:scale(1) rotate(0); } 50%{ transform:scale(1.18) rotate(8deg); } }
+  @keyframes starPop{ 0%{ transform:scale(.2) rotate(-90deg);} 100%{ transform:scale(1) rotate(0);} }
+
+  /* ---------- Mascot ---------- */
+  .mascot svg{ width:100%; height:100%; overflow:visible; display:block; }
+  .mascot{ animation:float 3s ease-in-out infinite; }
+  .mascot.cheer{ animation:cheer .9s cubic-bezier(.34,1.6,.5,1); }
+  .mascot .uni-head{ transform-box:fill-box; transform-origin:30% 70%; }
+  .mascot.no .uni-head{ animation:shakeNo .9s ease-in-out; }
+  .mascot .eye-happy{ display:none; }
+  .mascot.cheer .eye-happy{ display:inline; }
+  .mascot.cheer .eye-open{ display:none; }
+  @keyframes float{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-6px);} }
+  @keyframes cheer{ 0%{transform:translateY(0) scale(1);} 30%{transform:translateY(-26px) scale(1.06) rotate(-4deg);} 60%{transform:translateY(0) scale(.97);} 80%{transform:translateY(-8px);} 100%{transform:translateY(0);} }
+  @keyframes shakeNo{ 0%,100%{transform:rotate(0);} 20%{transform:rotate(-9deg);} 40%{transform:rotate(8deg);} 60%{transform:rotate(-6deg);} 80%{transform:rotate(4deg);} }
+
+  /* ---------- Home screen ---------- */
+  #home .home-main{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:min(3vh,24px); min-height:0;
+  }
+  .title{
+    margin:0; font-size:clamp(34px, 6.5vmin, 64px); font-weight:800; letter-spacing:.01em;
+    color:var(--pink-d); text-shadow:0 3px 0 #fff, 0 6px 16px rgba(242,122,176,.3);
+    display:flex; align-items:center; gap:12px;
+  }
+  .title svg{ width:1.1em; height:1.1em; }
+  #homeMascot{ width:min(52vmin,380px); height:min(52vmin,380px); cursor:pointer; }
+  .home-buttons{ display:flex; gap:clamp(14px,3vw,32px); flex-wrap:wrap; justify-content:center; }
+  .big-btn{
+    min-width:clamp(150px,30vmin,260px); min-height:clamp(110px,18vmin,160px);
+    border-radius:40px; border:5px solid #fff; padding:12px 26px;
+    display:flex; align-items:center; justify-content:center; gap:14px;
+    font-size:clamp(28px,5vmin,46px); font-weight:800;
+    transition:transform .2s cubic-bezier(.34,1.8,.5,1);
+  }
+  .big-btn:active{ transform:scale(.93); }
+  .big-btn svg{ width:clamp(56px,10vmin,90px); height:clamp(56px,10vmin,90px); flex:0 0 auto; }
+  .play-btn{ background:linear-gradient(180deg,#8FF0C8,#4CD3A0); color:#fff; box-shadow:0 8px 0 #2FA87B, 0 14px 30px rgba(63,191,143,.35); animation:breathe 2.2s ease-in-out infinite; }
+  .coll-btn{ background:linear-gradient(180deg,#FFD0E6,#FF9CC8); color:#fff; box-shadow:0 8px 0 #E0689F, 0 14px 30px rgba(242,122,176,.35); }
+  .coll-btn .count{ font-size:.8em; text-shadow:0 2px 0 rgba(0,0,0,.08); }
+  @keyframes breathe{ 0%,100%{ transform:scale(1);} 50%{ transform:scale(1.05);} }
+
+  /* Parent reset: small, bottom-right, must be held for a few seconds. */
+  #resetBtn{
+    position:absolute; right:calc(env(safe-area-inset-right,0px) + 14px); bottom:calc(env(safe-area-inset-bottom,0px) + 12px);
+    width:48px; height:48px; border-radius:50%; border:0; padding:0; background:rgba(255,255,255,.55);
+    color:#B9A6D8; display:grid; place-items:center;
+  }
+  #resetBtn svg{ width:48px; height:48px; }
+  #resetBtn .ring{ stroke-dasharray:132; stroke-dashoffset:132; }
+
+  /* ---------- Play screen ---------- */
+  .play-main{
+    flex:1; min-height:0; display:grid; gap:min(2vh,16px);
+    grid-template-columns:minmax(0,1fr);
+    grid-template-rows:minmax(0,1fr) auto auto;
+    grid-template-areas:"clock" "reward" "answers";
+    align-items:center; justify-items:center;
+    --clock:min(40vh, 84vw);
+    --boardW:min(54vw, 30vh);
+    --mascot:min(22vw, 15vh);
+    --ansH:clamp(88px, 10.5vh, 132px);
+    --ansFont:clamp(32px, min(7vw, 5.5vh), 64px);
+  }
+  @media (orientation:landscape){
+    .play-main{
+      grid-template-columns:auto minmax(0,1fr);
+      grid-template-rows:1fr auto;
+      grid-template-areas:"clock reward" "clock answers";
+      --clock:min(78vh, 44vw);
+      --boardW:min(30vw, 42vh);
+      --mascot:min(13vw, 19vh);
+      --ansH:clamp(88px, 15vh, 132px);
+      --ansFont:clamp(26px, min(3.5vw, 6.5vh), 56px);
+    }
+  }
+  .clock-area{ grid-area:clock; position:relative; width:var(--clock); height:var(--clock); }
+  #clock{ width:100%; height:100%; display:block; overflow:visible; filter:drop-shadow(0 10px 22px rgba(156,122,214,.28)); }
+  #clock .hand{ transition:transform .9s cubic-bezier(.45,1.35,.55,1); transform-origin:100px 100px; transform-box:view-box; }
+  #clock.hint .hand line{ animation:handPulse .5s ease-in-out 6 alternate; }
+  #clock .hl{ opacity:0; transition:opacity .3s; }
+  #clock.hint .hl{ opacity:1; }
+  @keyframes handPulse{ from{ opacity:1; } to{ opacity:.45; } }
+  #sayBtn{ position:absolute; right:-6px; bottom:4%; width:64px; height:64px; }
+
+  .reward-area{ grid-area:reward; display:flex; flex-direction:column; align-items:center; gap:min(1.4vh,12px); }
+  .reward-row{ display:flex; align-items:flex-end; gap:10px; }
+  #playMascot{ width:var(--mascot); height:var(--mascot); flex:0 0 auto; }
+  .board{
+    position:relative; width:var(--boardW); height:calc(var(--boardW) * .8);
+    border-radius:18px; background:rgba(255,255,255,.7);
+    box-shadow:0 0 0 4px #fff, 0 10px 24px rgba(156,122,214,.25);
+  }
+  .board > svg{ position:absolute; inset:0; width:100%; height:100%; overflow:visible; display:block; }
+  .board .piece{ pointer-events:none; }
+  .board .piece.land{ animation:land .5s ease-out; }
+  @keyframes land{ 0%{ filter:brightness(1.35) drop-shadow(0 0 6px #fff);} 100%{ filter:none; } }
+
+  .hearts{ display:flex; gap:min(1vw,8px); }
+  .hearts svg{ width:clamp(22px, min(4vw, 3.4vh), 38px); height:clamp(22px, min(4vw, 3.4vh), 38px); }
+  .hearts path{ fill:#fff; stroke:#EBC6DD; stroke-width:2; transition:fill .3s; }
+  .hearts .on path{ fill:var(--pink-d); stroke:#fff; }
+  .hearts .on{ animation:starPop .5s cubic-bezier(.34,1.8,.5,1); }
+
+  .answers{ grid-area:answers; display:flex; gap:clamp(10px,2vw,20px); width:100%; justify-content:center; padding-top:6px; }
+  .ans{
+    position:relative; flex:1 1 0; max-width:280px; min-width:0;
+    height:var(--ansH); min-height:80px; border-radius:30px;
+    border:5px solid #fff; background:#fff; padding:0 10px;
+    font-size:var(--ansFont); font-weight:800; font-variant-numeric:tabular-nums; color:var(--ink);
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    box-shadow:0 7px 0 var(--edge,#D6C4F5), 0 12px 24px rgba(156,122,214,.22);
+    transition:transform .25s cubic-bezier(.34,1.8,.5,1), box-shadow .25s, opacity .3s, background .3s;
+  }
+  .ans:nth-child(1){ --edge:#F5B3D2; background:linear-gradient(180deg,#fff,#FFEAF4); }
+  .ans:nth-child(2){ --edge:#A9E5CF; background:linear-gradient(180deg,#fff,#E6FBF2); }
+  .ans:nth-child(3){ --edge:#AFD8F3; background:linear-gradient(180deg,#fff,#E7F4FF); }
+  .ans .spk{ width:.5em; height:.5em; opacity:.35; flex:0 0 auto; }
+  .ans.sel{ transform:translateY(-6px) scale(1.07); border-color:var(--gold); box-shadow:0 7px 0 var(--gold-d), 0 0 0 6px rgba(255,211,92,.35), 0 16px 30px rgba(232,169,43,.3); }
+  .ans .ok{
+    position:absolute; top:-26px; right:-18px; width:66px; height:66px; border-radius:50%;
+    background:var(--mint-d); border:4px solid #fff; display:grid; place-items:center;
+    box-shadow:0 4px 12px rgba(63,191,143,.45); transform:scale(0); transition:transform .3s cubic-bezier(.34,1.8,.5,1);
+  }
+  .ans .ok svg{ width:36px; height:36px; }
+  .ans.sel .ok{ transform:scale(1); animation:okBounce 1.2s ease-in-out .3s infinite; }
+  @keyframes okBounce{ 0%,100%{ transform:scale(1);} 50%{ transform:scale(1.15);} }
+  .ans.right{ background:linear-gradient(180deg,#C9FFE9,#8FF0C8); border-color:#fff; transform:scale(1.1); }
+  .ans.right .ok{ transform:scale(0); animation:none; }
+  .ans.wrong{ opacity:.45; animation:wobble .6s ease-in-out; }
+  .ans.wrong .ok{ transform:scale(0); animation:none; }
+  .ans.hint{ border-color:var(--mint-d); animation:hintGlow .7s ease-in-out 4 alternate; }
+  @keyframes wobble{ 0%,100%{ transform:translateX(0);} 25%{ transform:translateX(-8px) rotate(-2deg);} 75%{ transform:translateX(8px) rotate(2deg);} }
+  @keyframes hintGlow{ from{ transform:scale(1); box-shadow:0 7px 0 var(--mint-d), 0 0 0 0 rgba(63,191,143,.5);} to{ transform:scale(1.1); box-shadow:0 7px 0 var(--mint-d), 0 0 0 16px rgba(63,191,143,0);} }
+
+  /* ---------- Collection screen ---------- */
+  .coll-title{ margin:0; font-size:clamp(26px,4.5vmin,40px); font-weight:800; color:var(--pink-d); display:flex; align-items:center; gap:10px; }
+  .coll-title svg{ width:1.4em; height:1.4em; }
+  .coll-scroll{ flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; touch-action:pan-y; }
+  .coll-grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(clamp(140px,22vw,220px),1fr));
+    gap:clamp(12px,2vw,20px); padding:14px 4px 30px; align-content:start;
+  }
+  .card{
+    position:relative; border:4px solid #fff; border-radius:24px; padding:0; overflow:hidden;
+    background:#fff; box-shadow:0 6px 0 #E3D6F7, 0 10px 20px rgba(156,122,214,.18);
+    transition:transform .2s cubic-bezier(.34,1.8,.5,1);
+  }
+  .card:active{ transform:scale(.95); }
+  .card svg{ width:100%; height:auto; display:block; aspect-ratio:5/4; }
+  .card.locked{ background:#F1EAFB; }
+  .card .q{ position:absolute; inset:auto 8px 6px auto; font-size:26px; font-weight:800; color:#fff; text-shadow:0 2px 4px rgba(120,90,170,.4); }
+
+  /* ---------- Overlays (celebration, viewer, reset dialog) ---------- */
+  .overlay{
+    position:fixed; inset:0; z-index:20; display:none; flex-direction:column; align-items:center; justify-content:center;
+    gap:min(2.4vh,20px); padding:20px; background:rgba(245,236,255,.88);
+    -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  }
+  .overlay.show{ display:flex; animation:fadeIn .35s ease-out; }
+  @keyframes fadeIn{ from{ opacity:0;} to{ opacity:1;} }
+  .frame{
+    width:min(84vw, 62vh * 1.25, 640px); aspect-ratio:5/4; border-radius:30px; overflow:hidden;
+    border:8px solid #fff; background:#fff; box-shadow:0 0 0 6px var(--gold), 0 20px 50px rgba(156,122,214,.4);
+  }
+  .frame svg{ width:100%; height:100%; display:block; }
+  #celebrate .frame{ animation:reveal 1s cubic-bezier(.34,1.5,.5,1); }
+  @keyframes reveal{ 0%{ transform:scale(.3) rotate(-12deg); opacity:0;} 100%{ transform:scale(1) rotate(0); opacity:1;} }
+  .uni-name{ font-size:clamp(30px,5.5vmin,54px); font-weight:800; color:var(--pink-d); text-shadow:0 3px 0 #fff; margin:0; }
+  #nextBtn{ min-width:160px; min-height:110px; }
+  #nextBtn[disabled]{ opacity:.4; }
+  #viewer .round-btn{ position:absolute; top:calc(env(safe-area-inset-top,0px) + 12px); right:calc(env(safe-area-inset-right,0px) + 14px); }
+
+  .dialog{
+    background:#fff; border-radius:28px; padding:26px 28px; max-width:420px; text-align:center;
+    box-shadow:0 20px 50px rgba(91,63,134,.3); font-size:22px; font-weight:700;
+  }
+  .dialog p{ margin:0 0 20px; }
+  .dialog .row{ display:flex; gap:14px; justify-content:center; }
+  .dialog button{ min-width:130px; min-height:64px; border-radius:20px; border:0; font-size:20px; font-weight:800; }
+  .dialog .danger{ background:#FF8FA9; color:#fff; }
+  .dialog .cancel{ background:#EEE6FB; color:var(--ink); }
+
+  /* ---------- Effects ---------- */
+  #fx{ position:fixed; inset:0; pointer-events:none; z-index:30; overflow:hidden; }
+  .spark{ position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; }
+  #confetti{ position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:25; }
+
+  @media (prefers-reduced-motion:reduce){
+    .mascot, .play-btn, .stars .current{ animation:none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Shared SVG definitions: the current puzzle picture is placed in #puzzlePic
+     and every puzzle piece shows it through a jigsaw-shaped clip path. -->
+<svg id="svgDefs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs><g id="puzzlePic"></g></defs>
+</svg>
+
+<!-- ================= HOME ================= -->
+<section id="home" class="screen active">
+  <div class="bar">
+    <div class="bar-left"></div>
+    <div class="bar-mid"><div class="stars" id="homeStars"></div></div>
+    <div class="bar-right"><button class="round-btn mute-btn" aria-label="Sound on or off"></button></div>
+  </div>
+  <div class="home-main">
+    <h1 class="title"><span data-icon="clock"></span>Unicorn Clock</h1>
+    <div class="mascot" id="homeMascot" aria-label="Unicorn friend"></div>
+    <div class="home-buttons">
+      <button class="big-btn play-btn" id="playBtn" aria-label="Play"><span data-icon="play"></span></button>
+      <button class="big-btn coll-btn" id="collBtn" aria-label="My Unicorns"><span id="collIcon"></span><span class="count" id="collCount"></span></button>
+    </div>
+  </div>
+  <button id="resetBtn" aria-label="Parents: hold 3 seconds to reset">
+    <svg viewBox="0 0 48 48">
+      <circle cx="24" cy="24" r="21" fill="none" stroke="#EDE4FA" stroke-width="3"/>
+      <circle class="ring" cx="24" cy="24" r="21" fill="none" stroke="#F27AB0" stroke-width="3.5" stroke-linecap="round" transform="rotate(-90 24 24)"/>
+      <path d="M17 22v-3a7 7 0 0 1 14 0v3" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      <rect x="14" y="22" width="20" height="14" rx="4" fill="currentColor"/>
+    </svg>
+  </button>
+</section>
+
+<!-- ================= PLAY ================= -->
+<section id="play" class="screen">
+  <div class="bar">
+    <div class="bar-left"></div>
+    <div class="bar-mid"><div class="stars" id="playStars"></div></div>
+    <div class="bar-right">
+      <button class="round-btn" id="playHomeBtn" aria-label="Back to start"><span data-icon="house"></span></button>
+      <button class="round-btn mute-btn" aria-label="Sound on or off"></button>
+    </div>
+  </div>
+  <div class="play-main">
+    <div class="clock-area">
+      <svg id="clock" viewBox="0 0 200 200" aria-label="Clock"></svg>
+      <button class="round-btn" id="sayBtn" aria-label="Say it again"><span data-icon="speaker"></span></button>
+    </div>
+    <div class="reward-area">
+      <div class="reward-row">
+        <div class="mascot" id="playMascot"></div>
+        <div class="board" id="board"><svg class="slots" id="slots" viewBox="0 0 250 200"></svg></div>
+      </div>
+      <div class="hearts" id="hearts"></div>
+    </div>
+    <div class="answers" id="answers"></div>
+  </div>
+</section>
+
+<!-- ================= COLLECTION ================= -->
+<section id="collection" class="screen">
+  <div class="bar">
+    <div class="bar-left"></div>
+    <div class="bar-mid"><h2 class="coll-title"><span id="collTitleIcon"></span><span id="collTitleCount"></span></h2></div>
+    <div class="bar-right">
+      <button class="round-btn" id="collHomeBtn" aria-label="Back to start"><span data-icon="house"></span></button>
+    </div>
+  </div>
+  <div class="coll-scroll" id="collScroll"><div class="coll-grid" id="collGrid"></div></div>
+</section>
+
+<!-- ================= OVERLAYS ================= -->
+<div class="overlay" id="celebrate">
+  <div class="stars" id="celStars"></div>
+  <div class="frame" id="celFrame"></div>
+  <p class="uni-name" id="celName"></p>
+  <button class="big-btn play-btn" id="nextBtn" aria-label="Next"><span data-icon="play"></span></button>
+</div>
+
+<div class="overlay" id="viewer">
+  <button class="round-btn" id="viewerClose" aria-label="Close"><span data-icon="close"></span></button>
+  <div class="frame" id="viewFrame"></div>
+  <p class="uni-name" id="viewName"></p>
+</div>
+
+<div class="overlay" id="resetDialog">
+  <div class="dialog">
+    <p>Reset all progress?<br><small style="font-weight:500;color:#8C73B3">Stage, puzzle and all unicorns will be cleared.</small></p>
+    <div class="row">
+      <button class="cancel" id="resetNo">Cancel</button>
+      <button class="danger" id="resetYes">Reset</button>
+    </div>
+  </div>
+</div>
+
+<canvas id="confetti"></canvas>
+<div id="fx"></div>
+
+<script>
+'use strict';
+
+/* =====================================================================
+   CONFIG: everything you might want to tweak lives here.
+   ===================================================================== */
+
+// Puzzle grid. PIECES_PER_PUZZLE = columns x rows (5 x 2 = 10 pieces).
+const PUZZLE_COLS = 5;
+const PUZZLE_ROWS = 2;
+const PIECES_PER_PUZZLE = PUZZLE_COLS * PUZZLE_ROWS;
+
+// Correct answers in a row needed to finish a puzzle and pass a stage.
+// Pieces are spread evenly over the streak, so with 10 / 10 each correct
+// answer places exactly one piece.
+const REQUIRED_STREAK = 10;
+
+// What a wrong answer does to the current puzzle:
+//   'reset'     -> all pieces fly away, the streak starts again at 0 (default)
+//   'minus-one' -> only the last piece flies away
+//   'keep'      -> nothing is lost
+const WRONG_ANSWER_RULE = 'reset';
+
+// Number of answer buttons shown under the clock.
+const ANSWER_COUNT = 3;
+
+// Stages, in order. `minutes` lists which minute values can appear.
+// `focusNew` is the chance that a question uses a minute value that is new
+// in this stage (so each stage practices its new skill but stays mixed).
+const STAGES = [
+  { minutes: [0],                                         focusNew: 0   }, // 1: full hours
+  { minutes: [0, 30],                                     focusNew: 0.5 }, // 2: + half hours
+  { minutes: [0, 15, 30, 45],                             focusNew: 0.5 }, // 3: + quarters
+  { minutes: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55], focusNew: 0.5 }, // 4: 5-minute steps
+];
+
+// Pauses (milliseconds) after an answer before the next question.
+const TIMING = {
+  afterCorrect: 1900,
+  wrongPiecesFlyAway: 1500,  // pieces leave after the correct answer was shown
+  afterWrong: 4200,
+  beforeCelebration: 1100,
+  nextButtonDelay: 1400,     // avoid skipping the celebration by accident
+};
+
+const STORAGE_KEY = 'unicorn-clock.v1';
+const RESET_HOLD_MS = 3000;  // parents hold the lock button this long
+
+/* =====================================================================
+   SMALL HELPERS
+   ===================================================================== */
+const $ = (id) => document.getElementById(id);
+const rand = (n) => Math.floor(Math.random() * n);
+const pick = (arr) => arr[rand(arr.length)];
+function shuffle(arr){ const a = arr.slice(); for (let i = a.length - 1; i > 0; i--){ const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const pickR = (R, arr) => arr[Math.floor(R() * arr.length)];
+const range = (n) => Array.from({ length: n }, (_, i) => i);
+
+// Seeded random numbers, so every unicorn background always looks the same.
+function seeded(seed){
+  return function(){
+    seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Lighten (p > 0) or darken (p < 0) a #rrggbb color.
+function shade(hex, p){
+  const n = parseInt(hex.slice(1), 16);
+  let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const t = p < 0 ? 0 : 255, a = Math.abs(p);
+  r = Math.round((t - r) * a + r); g = Math.round((t - g) * a + g); b = Math.round((t - b) * a + b);
+  return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
+}
+
+// Web Animations with a safe fallback (older browsers just skip the motion).
+function animate(el, frames, opts){
+  if (el.animate) return el.animate(frames, opts);
+  const fake = { onfinish: null };
+  setTimeout(() => fake.onfinish && fake.onfinish(), opts.duration || 0);
+  return fake;
+}
+
+// Timers for the play screen, so leaving the screen cancels pending steps.
+let timers = [];
+function later(fn, ms){ const id = setTimeout(() => { timers = timers.filter(t => t !== id); fn(); }, ms); timers.push(id); return id; }
+function clearTimers(){ timers.forEach(clearTimeout); timers = []; }
+
+/* =====================================================================
+   STORAGE: progress survives reloads. All access is try/catch-guarded,
+   so the game still works when storage is blocked or full.
+   ===================================================================== */
+const DEFAULT_STATE = {
+  stage: 0,          // index into STAGES
+  streak: 0,         // correct answers in a row for the current puzzle
+  puzzleId: null,    // which unicorn picture the current puzzle shows
+  order: [],         // order in which the pieces are placed
+  unlocked: [],      // ids of unicorns already found
+  mastered: false,   // true once the last stage was completed
+  muted: false,
+};
+let state = loadState();
+
+function loadState(){
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch (e) { saved = null; }
+  const s = Object.assign({}, DEFAULT_STATE, saved && typeof saved === 'object' ? saved : {});
+  // Validate everything, in case the saved data is old or damaged.
+  s.stage = Math.min(Math.max(0, s.stage | 0), STAGES.length - 1);
+  s.streak = Math.min(Math.max(0, s.streak | 0), REQUIRED_STREAK - 1);
+  if (!Array.isArray(s.unlocked)) s.unlocked = [];
+  if (!Array.isArray(s.order) || s.order.length !== PIECES_PER_PUZZLE) { s.order = []; s.streak = 0; }
+  if (typeof s.puzzleId !== 'number') { s.puzzleId = null; s.streak = 0; }
+  return s;
+}
+function saveState(){
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep playing */ }
+}
+
+/* =====================================================================
+   SOUND: small synthesized effects with the Web Audio API.
+   ===================================================================== */
+const Sound = {
+  ctx: null,
+  // iOS only allows audio after a touch, so this runs on every tap.
+  unlock(){
+    try {
+      if (!this.ctx){
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        this.ctx = new AC();
+        const b = this.ctx.createBuffer(1, 1, 22050), s = this.ctx.createBufferSource();
+        s.buffer = b; s.connect(this.ctx.destination); s.start(0);
+      }
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+    } catch (e) {}
+  },
+  // One soft note. `at` is seconds from now.
+  note(freq, at, dur, { type = 'sine', vol = 0.18, glide = 0 } = {}){
+    if (state.muted || !this.ctx) return;
+    try {
+      const t = this.ctx.currentTime + at;
+      const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+      o.type = type; o.frequency.setValueAtTime(freq, t);
+      if (glide) o.frequency.exponentialRampToValueAtTime(glide, t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(this.ctx.destination);
+      o.start(t); o.stop(t + dur + 0.05);
+    } catch (e) {}
+  },
+  tap(){ this.note(660, 0, 0.12, { type: 'triangle', vol: 0.12 }); },
+  select(){ this.note(784, 0, 0.12, { type: 'triangle', vol: 0.13 }); this.note(1047, 0.07, 0.16, { type: 'sine', vol: 0.1 }); },
+  correct(){ [523, 659, 784, 1047].forEach((f, i) => this.note(f, i * 0.09, 0.35, { type: 'triangle', vol: 0.16 })); this.note(2093, 0.36, 0.4, { vol: 0.05 }); },
+  oops(){ this.note(440, 0, 0.28, { type: 'sine', vol: 0.12, glide: 370 }); this.note(349, 0.24, 0.4, { type: 'sine', vol: 0.11, glide: 294 }); },
+  piece(){ this.note(900, 0, 0.18, { type: 'sine', vol: 0.12, glide: 1400 }); this.note(1568, 0.14, 0.2, { type: 'triangle', vol: 0.08 }); },
+  away(){ this.note(880, 0, 0.7, { type: 'sine', vol: 0.07, glide: 330 }); },
+  jingle(){
+    const mel = [[523,0],[659,.15],[784,.3],[1047,.45],[988,.7],[1047,.85],[1175,1.0],[1319,1.2]];
+    mel.forEach(([f, t]) => this.note(f, t, 0.32, { type: 'triangle', vol: 0.15 }));
+    [[262,0],[330,.45],[392,.85],[523,1.2]].forEach(([f, t]) => this.note(f, t, 0.5, { type: 'sine', vol: 0.1 }));
+    [0.2, 0.55, 0.95, 1.35].forEach(t => this.note(2093 + rand(600), t, 0.25, { vol: 0.04 }));
+  },
+};
+
+/* =====================================================================
+   VOICE: spoken instructions with the built-in speechSynthesis
+   (offline on iPad). Silent when muted.
+   ===================================================================== */
+const Voice = {
+  voice: null,
+  choose(){
+    try {
+      const vs = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+      const en = vs.filter(v => /^en[-_]/i.test(v.lang) || v.lang === 'en');
+      this.voice = en.find(v => /samantha|karen|moira|tessa|serena|female/i.test(v.name) && v.localService !== false)
+        || en.find(v => /en[-_]US/i.test(v.lang) && v.localService !== false)
+        || en[0] || null;
+    } catch (e) { this.voice = null; }
+  },
+  say(text){
+    if (state.muted || !('speechSynthesis' in window)) return;
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      if (this.voice) u.voice = this.voice;
+      u.lang = this.voice ? this.voice.lang : 'en-US';
+      u.rate = 0.9; u.pitch = 1.2; u.volume = 1;
+      speechSynthesis.speak(u);
+    } catch (e) {}
+  },
+  stop(){ try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) {} },
+};
+if ('speechSynthesis' in window){
+  Voice.choose();
+  try { speechSynthesis.addEventListener('voiceschanged', () => Voice.choose()); } catch (e) {}
+}
+
+/* =====================================================================
+   TIME LOGIC: questions and answer options.
+   ===================================================================== */
+const ONES = ['zero','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve',
+              'thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty'];
+const numberWord = (n) => n < 20 ? ONES[n] : TENS[Math.floor(n / 10)] + (n % 10 ? ' ' + ONES[n % 10] : '');
+
+const sameTime = (a, b) => !!a && !!b && a.h === b.h && a.m === b.m;
+const digital = (t) => t.h + ':' + String(t.m).padStart(2, '0');
+// How a time is read aloud: "three o'clock", "three thirty", "three oh five".
+function spoken(t){
+  if (t.m === 0) return ONES[t.h] + " o'clock";
+  if (t.m < 10) return ONES[t.h] + ' oh ' + ONES[t.m];
+  return ONES[t.h] + ' ' + numberWord(t.m);
+}
+function timesFor(minutes){
+  const out = [];
+  for (let h = 1; h <= 12; h++) for (const m of minutes) out.push({ h, m });
+  return out;
+}
+const wrapHour = (h) => ((h - 1 + 120) % 12) + 1;
+const minuteGap = (a, b) => { const d = Math.abs(a - b) % 60; return Math.min(d, 60 - d); };
+
+let lastTime = null;  // never ask the same time twice in a row
+
+function pickTime(){
+  const stage = STAGES[state.stage];
+  const prevMinutes = state.stage > 0 ? STAGES[state.stage - 1].minutes : [];
+  const newMinutes = stage.minutes.filter(m => !prevMinutes.includes(m));
+  let pool = timesFor(stage.minutes).filter(t => !sameTime(t, lastTime));
+  if (newMinutes.length && Math.random() < stage.focusNew){
+    const focused = pool.filter(t => newMinutes.includes(t.m));
+    if (focused.length) pool = focused;
+  }
+  return pick(pool);
+}
+
+// Wrong options are plausible mistakes for the current stage, but clearly
+// different from the right answer.
+function makeOptions(correct){
+  const minutes = STAGES[state.stage].minutes;
+  const ideas = [];
+  // Same hour, a clearly different minute (checks the long minute hand).
+  const otherMinutes = minutes.filter(m => minuteGap(m, correct.m) >= 10);
+  if (otherMinutes.length) ideas.push({ h: correct.h, m: pick(otherMinutes) });
+  // Neighbouring hour, same minute (the classic "one hour off" slip).
+  ideas.push({ h: wrapHour(correct.h + (Math.random() < 0.5 ? 1 : -1)), m: correct.m });
+  // Reading the number the minute hand points at as the hour.
+  if (correct.m > 0) ideas.push({ h: correct.m / 5, m: correct.m });
+
+  const out = [correct];
+  for (const t of [...shuffle(ideas), ...shuffle(timesFor(minutes))]){
+    if (out.length >= ANSWER_COUNT) break;
+    if (!out.some(o => sameTime(o, t))) out.push(t);
+  }
+  return shuffle(out);
+}
+
+/* =====================================================================
+   ICONS (inline SVG, no image files)
+   ===================================================================== */
+const STAR_PATH = 'M24 4l5.9 12.2 13.4 1.8-9.8 9.3 2.4 13.3L24 34.2 12.1 40.6l2.4-13.3-9.8-9.3 13.4-1.8z';
+const HEART_PATH = 'M24 42C10 32 4 25 4 16.5 4 10.5 8.8 6 14.5 6c4 0 7.3 2.2 9.5 5.4C26.2 8.2 29.5 6 33.5 6 39.2 6 44 10.5 44 16.5 44 25 38 32 24 42z';
+const ICONS = {
+  play: '<svg viewBox="0 0 48 48"><path d="M16 9.5c0-2 2.2-3.2 3.9-2.1l20.3 13.2a2.9 2.9 0 0 1 0 4.8L19.9 38.6c-1.7 1.1-3.9-.1-3.9-2.1z" fill="#fff"/></svg>',
+  house: '<svg viewBox="0 0 48 48"><path d="M8 23L24 9l16 14" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 21v16a3 3 0 0 0 3 3h5v-9h6v9h5a3 3 0 0 0 3-3V21" fill="currentColor"/></svg>',
+  speaker: '<svg viewBox="0 0 48 48"><path d="M8 18h7l10-8v28l-10-8H8z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M31 17a9 9 0 0 1 0 14M35.5 12a15 15 0 0 1 0 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>',
+  muted: '<svg viewBox="0 0 48 48"><path d="M8 18h7l10-8v28l-10-8H8z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M31 18l11 12M42 18L31 30" fill="none" stroke="#F27AB0" stroke-width="4" stroke-linecap="round"/></svg>',
+  close: '<svg viewBox="0 0 48 48"><path d="M14 14l20 20M34 14L14 34" stroke="currentColor" stroke-width="5.5" stroke-linecap="round"/></svg>',
+  check: '<svg viewBox="0 0 48 48"><path d="M10 25l9 9 19-20" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  clock: '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="#fff" stroke="#F27AB0" stroke-width="4"/><path d="M24 24V14" stroke="#F2559B" stroke-width="4.5" stroke-linecap="round"/><path d="M24 24l9 5" stroke="#2F9FD6" stroke-width="3" stroke-linecap="round"/><circle cx="24" cy="24" r="3" fill="#FFD35C"/></svg>',
+};
+function fillIcons(root){
+  root.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = ICONS[el.dataset.icon]; });
+}
+const starSVG = (cls) => `<svg viewBox="0 0 48 48" class="${cls}"><path d="${STAR_PATH}" stroke-width="3" stroke-linejoin="round"/></svg>`;
+
+/* =====================================================================
+   DRAWING: the clock face
+   ===================================================================== */
+function buildClock(){
+  const c = 100;
+  const polar = (r, deg) => [c + r * Math.sin(deg * Math.PI / 180), c - r * Math.cos(deg * Math.PI / 180)];
+  let s = '';
+  s += '<circle cx="100" cy="100" r="97" fill="#FFD1E6"/>';
+  s += '<circle cx="100" cy="100" r="97" fill="none" stroke="#fff" stroke-width="3"/>';
+  // Little sparkles on the pink rim
+  [45, 135, 225, 315].forEach(d => { const [x, y] = polar(92, d); s += sparkle(x, y, 3.2, '#fff'); });
+  s += '<circle cx="100" cy="100" r="87" fill="#FFFDF9" stroke="#F3C6DE" stroke-width="2"/>';
+  // Hint highlights (shown after a wrong answer)
+  s += '<circle id="hlHour" class="hl" r="14" fill="#FFC2DD"/>';
+  s += '<circle id="hlMin" class="hl" r="15" fill="none" stroke="#7CCBF2" stroke-width="3.5"/>';
+  // Minute ticks
+  for (let i = 0; i < 60; i++){
+    const big = i % 5 === 0;
+    const [x1, y1] = polar(84, i * 6), [x2, y2] = polar(big ? 76 : 80, i * 6);
+    s += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${big ? '#C7A8E8' : '#E4D6F5'}" stroke-width="${big ? 3 : 1.4}" stroke-linecap="round"/>`;
+  }
+  // Numbers 1-12
+  for (let n = 1; n <= 12; n++){
+    const [x, y] = polar(63, n * 30);
+    s += `<text x="${x.toFixed(1)}" y="${(y + 7.5).toFixed(1)}" text-anchor="middle" font-size="21" font-weight="800" fill="#6B4A94" font-family="ui-rounded, 'SF Pro Rounded', 'Arial Rounded MT Bold', system-ui, sans-serif">${n}</text>`;
+  }
+  // Hands: hour = short, thick, pink. Minute = long, thin, blue.
+  s += '<g class="hand" id="hourHand"><line x1="100" y1="110" x2="100" y2="58" stroke="#F2559B" stroke-width="10" stroke-linecap="round"/></g>';
+  s += '<g class="hand" id="minuteHand"><line x1="100" y1="112" x2="100" y2="24" stroke="#2F9FD6" stroke-width="5" stroke-linecap="round"/></g>';
+  s += '<circle cx="100" cy="100" r="7.5" fill="#FFD35C" stroke="#E8A92B" stroke-width="2"/>';
+  $('clock').innerHTML = s;
+}
+
+// Hands always take the short way round to the new time.
+const hand = { h: 0, m: 0 };
+function turnTo(current, target){ let d = ((target - current) % 360 + 540) % 360 - 180; return current + d; }
+function setClock(t){
+  hand.m = turnTo(hand.m, t.m * 6);
+  hand.h = turnTo(hand.h, (t.h % 12) * 30 + t.m * 0.5);  // hour hand moves between numbers too
+  $('hourHand').style.transform = `rotate(${hand.h}deg)`;
+  $('minuteHand').style.transform = `rotate(${hand.m}deg)`;
+  // Place the hint circles on the hour number and the number the minute hand points to.
+  const at = (n, r) => [100 + r * Math.sin(n * 30 * Math.PI / 180), 100 - r * Math.cos(n * 30 * Math.PI / 180)];
+  const [hx, hy] = at(t.h, 63), [mx, my] = at(t.m / 5 || 12, 63);
+  $('hlHour').setAttribute('cx', hx); $('hlHour').setAttribute('cy', hy);
+  $('hlMin').setAttribute('cx', mx); $('hlMin').setAttribute('cy', my);
+}
+
+/* =====================================================================
+   DRAWING: scenery primitives for the unicorn pictures (250 x 200 canvas)
+   ===================================================================== */
+function sparkle(x, y, s, c){
+  return `<path d="M${x},${y - s * 2}Q${x},${y} ${x + s * 2},${y}Q${x},${y} ${x},${y + s * 2}Q${x},${y} ${x - s * 2},${y}Q${x},${y} ${x},${y - s * 2}Z" fill="${c}"/>`;
+}
+function skyGrad(uid, top, bottom){
+  return `<defs><linearGradient id="${uid}sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${bottom}"/></linearGradient></defs><rect width="250" height="200" fill="url(#${uid}sky)"/>`;
+}
+function cloud(x, y, s, c = '#fff', o = 1){
+  return `<g transform="translate(${x},${y}) scale(${s})" fill="${c}" opacity="${o}"><circle cx="0" cy="0" r="11"/><circle cx="14" cy="-7" r="14"/><circle cx="29" cy="-1" r="11"/><rect x="0" y="-2" width="29" height="13" rx="6"/></g>`;
+}
+function rainbow(cx, cy, r, w, cols = ['#FFB3C7', '#FFD6A5', '#FFF3A8', '#C7F0C2', '#B5DEFF', '#D5C2FF'], o = 1){
+  return `<g fill="none" stroke-width="${w}" opacity="${o}">` + cols.map((c, i) => {
+    const rr = r - i * w;
+    return `<path d="M${cx - rr},${cy}A${rr},${rr} 0 0 1 ${cx + rr},${cy}" stroke="${c}"/>`;
+  }).join('') + '</g>';
+}
+function sun(x, y, r, c = '#FFE27A'){
+  let rays = '';
+  for (let i = 0; i < 10; i++){ const a = i * 36 * Math.PI / 180; rays += `<line x1="${x + Math.cos(a) * (r + 4)}" y1="${y + Math.sin(a) * (r + 4)}" x2="${x + Math.cos(a) * (r + 10)}" y2="${y + Math.sin(a) * (r + 10)}"/>`; }
+  return `<g stroke="${c}" stroke-width="3" stroke-linecap="round">${rays}</g><circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/>`;
+}
+function moon(x, y, r, c = '#FFF4C2'){
+  return `<path d="M${x},${y - r}A${r},${r} 0 1 0 ${x},${y + r}A${r * 0.78},${r} 0 1 1 ${x},${y - r}Z" fill="${c}"/>`;
+}
+function starField(R, n, x0, y0, w, h, cols = ['#FFFFFF', '#FFF4C2', '#FFD6F0']){
+  let s = '';
+  for (let i = 0; i < n; i++){
+    const x = (x0 + R() * w).toFixed(1), y = (y0 + R() * h).toFixed(1), c = cols[Math.floor(R() * cols.length)];
+    s += R() < 0.3 ? sparkle(+x, +y, 1.4 + R() * 1.6, c) : `<circle cx="${x}" cy="${y}" r="${(0.6 + R() * 1.1).toFixed(1)}" fill="${c}"/>`;
+  }
+  return s;
+}
+function hills(y, h, c, phase = 0){
+  return `<path d="M0,${y}Q${40 + phase},${y - h} ${90 + phase},${y}T${190 + phase},${y}T290,${y}V200H0Z" fill="${c}"/>`;
+}
+function ground(y, c){ return `<rect x="0" y="${y}" width="250" height="${200 - y}" fill="${c}"/>`; }
+function flower(x, y, s, pc, cc = '#FFE27A', stem = true){
+  let p = '';
+  for (let i = 0; i < 5; i++){ const a = i * 72 * Math.PI / 180; p += `<circle cx="${(x + Math.cos(a) * 3.2 * s).toFixed(1)}" cy="${(y + Math.sin(a) * 3.2 * s).toFixed(1)}" r="${2.6 * s}" fill="${pc}"/>`; }
+  return (stem ? `<line x1="${x}" y1="${y}" x2="${x}" y2="${y + 10 * s}" stroke="#7CCB8A" stroke-width="${1.4 * s}"/>` : '') + p + `<circle cx="${x}" cy="${y}" r="${2 * s}" fill="${cc}"/>`;
+}
+function tree(x, y, s, leaf, trunk = '#C9A27E'){
+  return `<g transform="translate(${x},${y}) scale(${s})"><rect x="-4" y="-22" width="8" height="24" rx="3" fill="${trunk}"/><circle cx="0" cy="-34" r="16" fill="${leaf}"/><circle cx="-12" cy="-26" r="11" fill="${leaf}"/><circle cx="12" cy="-26" r="11" fill="${leaf}"/><circle cx="-5" cy="-40" r="5" fill="#fff" opacity=".25"/></g>`;
+}
+function pine(x, y, s, c = '#8CCFA6', snow = false){
+  return `<g transform="translate(${x},${y}) scale(${s})"><rect x="-3" y="-6" width="6" height="8" fill="#B58E6E"/><path d="M0,-44L-14,-18H14Z M0,-32L-17,-4H17Z" fill="${c}"/>${snow ? '<path d="M0,-44L-6,-33Q0,-30 6,-33Z" fill="#fff"/>' : ''}</g>`;
+}
+function castle(x, y, s){
+  const wall = '#F8D9F0', roof = '#C9A8F2', dark = '#E4B9DE';
+  const tower = (tx, h) => `<rect x="${tx - 9}" y="${-h}" width="18" height="${h}" fill="${wall}"/><path d="M${tx - 12},${-h}L${tx},${-h - 22}L${tx + 12},${-h}Z" fill="${roof}"/><path d="M${tx},${-h - 22}V${-h - 32}" stroke="#B48ADF" stroke-width="1.5"/><path d="M${tx},${-h - 32}l9,3l-9,3Z" fill="#FF9CC8"/><rect x="${tx - 3}" y="${-h + 12}" width="6" height="9" rx="3" fill="${dark}"/>`;
+  return `<g transform="translate(${x},${y}) scale(${s})"><rect x="-30" y="-40" width="60" height="40" fill="${wall}"/>${tower(-30, 58)}${tower(30, 58)}${tower(0, 74)}<path d="M-8,0V-16A8,8 0 0 1 8,-16V0Z" fill="${roof}"/>${[-22, -14, 14, 22].map(t => `<rect x="${t - 3}" y="-46" width="6" height="7" fill="${wall}"/>`).join('')}</g>`;
+}
+function heartShape(x, y, s, c, o = 1){
+  return `<path transform="translate(${x},${y}) scale(${s / 48})" d="${HEART_PATH}" fill="${c}" opacity="${o}"/>`;
+}
+function balloon(x, y, s, c){
+  return `<g transform="translate(${x},${y}) scale(${s})"><path d="M0,14 Q-3,24 1,34" stroke="#B7A4D8" fill="none" stroke-width="1"/><ellipse cx="0" cy="0" rx="10" ry="13" fill="${c}"/><path d="M-2,13L2,13L0,16Z" fill="${c}"/><ellipse cx="-4" cy="-5" rx="2.5" ry="4" fill="#fff" opacity=".45"/></g>`;
+}
+function hotAirBalloon(x, y, s, c1, c2){
+  return `<g transform="translate(${x},${y}) scale(${s})"><path d="M-16,-6A18,18 0 1 1 16,-6Q10,6 5,14H-5Q-10,6 -16,-6Z" fill="${c1}"/><path d="M-6,-24Q-10,0 -5,14H5Q10,0 6,-24Q0,-26 -6,-24Z" fill="${c2}"/><path d="M-5,14L-4,20M5,14L4,20" stroke="#B58E6E" stroke-width="1"/><rect x="-5" y="20" width="10" height="7" rx="2" fill="#D9A77A"/></g>`;
+}
+function mountain(x, base, w, h, c, cap){
+  return `<path d="M${x - w / 2},${base}L${x},${base - h}L${x + w / 2},${base}Z" fill="${c}"/>` +
+    (cap ? `<path d="M${x - w * 0.14},${base - h * 0.72}L${x},${base - h}L${x + w * 0.14},${base - h * 0.72}L${x + w * 0.06},${base - h * 0.66}L${x},${base - h * 0.74}L${x - w * 0.06},${base - h * 0.66}Z" fill="${cap}"/>` : '');
+}
+function snowflake(x, y, s, c = '#fff'){
+  return `<g stroke="${c}" stroke-width="${s * 0.35}" stroke-linecap="round" transform="translate(${x},${y})"><line x1="${-s}" y1="0" x2="${s}" y2="0"/><line x1="${-s / 2}" y1="${-s * 0.87}" x2="${s / 2}" y2="${s * 0.87}"/><line x1="${-s / 2}" y1="${s * 0.87}" x2="${s / 2}" y2="${-s * 0.87}"/></g>`;
+}
+function palm(x, y, s){
+  return `<g transform="translate(${x},${y}) scale(${s})"><path d="M0,0Q4,-30 -2,-60" stroke="#C9A27E" stroke-width="6" fill="none" stroke-linecap="round"/>` +
+    ['M-2,-60Q-20,-68 -34,-56Q-18,-60 -2,-58', 'M-2,-60Q14,-72 32,-60Q14,-62 -2,-58', 'M-2,-60Q-12,-78 -26,-80Q-10,-72 -2,-60', 'M-2,-60Q10,-82 24,-80Q8,-72 -2,-60']
+      .map(d => `<path d="${d}Z" fill="#7FD49A"/>`).join('') + '<circle cx="-4" cy="-58" r="3" fill="#B58E6E"/><circle cx="1" cy="-57" r="3" fill="#A87E5C"/></g>';
+}
+function lollipop(x, y, s, c1, c2){
+  return `<g transform="translate(${x},${y}) scale(${s})"><rect x="-1.5" y="-4" width="3" height="40" fill="#fff" stroke="#EBD9F5"/><circle cx="0" cy="-12" r="14" fill="${c1}"/><path d="M0,-12m-9,0a9,9 0 1 1 9,9a6,6 0 1 1 -6,-6a3,3 0 1 1 3,3" fill="none" stroke="${c2}" stroke-width="3" stroke-linecap="round"/></g>`;
+}
+function mushroom(x, y, s, cap){
+  return `<g transform="translate(${x},${y}) scale(${s})"><path d="M-5,0Q-6,-10 -4,-14H4Q6,-10 5,0Z" fill="#FFF6E6"/><path d="M-16,-12A16,14 0 0 1 16,-12Z" fill="${cap}"/><circle cx="-7" cy="-18" r="2.5" fill="#fff"/><circle cx="3" cy="-22" r="3" fill="#fff"/><circle cx="9" cy="-15" r="2" fill="#fff"/></g>`;
+}
+function planet(x, y, r, c, ring){
+  return (ring ? `<ellipse cx="${x}" cy="${y}" rx="${r * 1.8}" ry="${r * 0.45}" fill="none" stroke="${ring}" stroke-width="2.5" transform="rotate(-18 ${x} ${y})"/>` : '') +
+    `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/><circle cx="${x - r * 0.3}" cy="${y - r * 0.3}" r="${r * 0.3}" fill="#fff" opacity=".3"/>`;
+}
+function butterfly(x, y, s, c){
+  return `<g transform="translate(${x},${y}) scale(${s})"><ellipse cx="-5" cy="-3" rx="5" ry="6" fill="${c}"/><ellipse cx="5" cy="-3" rx="5" ry="6" fill="${c}"/><ellipse cx="-4" cy="5" rx="3.5" ry="4" fill="${shade(c, 0.3)}"/><ellipse cx="4" cy="5" rx="3.5" ry="4" fill="${shade(c, 0.3)}"/><rect x="-1" y="-6" width="2" height="14" rx="1" fill="#6B4A94"/></g>`;
+}
+function firework(x, y, r, c){
+  let s = `<g stroke="${c}" stroke-width="2" stroke-linecap="round">`;
+  for (let i = 0; i < 12; i++){ const a = i * 30 * Math.PI / 180; s += `<line x1="${(x + Math.cos(a) * r * 0.35).toFixed(1)}" y1="${(y + Math.sin(a) * r * 0.35).toFixed(1)}" x2="${(x + Math.cos(a) * r).toFixed(1)}" y2="${(y + Math.sin(a) * r).toFixed(1)}"/>`; }
+  return s + `</g><circle cx="${x}" cy="${y}" r="2.5" fill="${c}"/>`;
+}
+function crystal(x, y, s, c){
+  return `<g transform="translate(${x},${y}) scale(${s})"><path d="M0,0L-7,-20L0,-38L7,-20Z" fill="${c}"/><path d="M0,0L0,-38L7,-20Z" fill="#fff" opacity=".35"/><path d="M8,0L3,-14L9,-24L14,-12Z" fill="${shade(c, -0.1)}"/></g>`;
+}
+function waves(y, c, amp = 3){
+  let d = `M0,${y}`;
+  for (let x = 0; x < 250; x += 25) d += `q6.25,${-amp} 12.5,0t12.5,0`;
+  return `<path d="${d}V200H0Z" fill="${c}"/>`;
+}
+
+/* =====================================================================
+   DRAWING: the unicorn (parametric, so every picture can be unique)
+   Local coordinates: body centre at (0,0), hooves at y ~ 46, facing right.
+   ===================================================================== */
+const POSES = {
+  stand:  { nf: [[22,10],[23,29],[23,45]], ff: [[13,10],[12,29],[12,45]], nb: [[-22,10],[-23,29],[-22,45]], fb: [[-30,8],[-31,29],[-31,45]], rot: 0,   dy: 0 },
+  prance: { nf: [[22,10],[34,21],[28,33]], ff: [[13,10],[15,29],[16,45]], nb: [[-22,10],[-24,29],[-24,45]], fb: [[-30,8],[-30,29],[-33,45]], rot: -4,  dy: 0 },
+  run:    { nf: [[22,10],[35,25],[46,33]], ff: [[13,10],[19,28],[14,44]], nb: [[-22,10],[-31,28],[-44,36]], fb: [[-30,8],[-26,28],[-18,44]], rot: -4,  dy: -2 },
+  fly:    { nf: [[22,10],[34,20],[28,31]], ff: [[13,10],[26,21],[21,32]], nb: [[-24,10],[-39,18],[-54,21]], fb: [[-30,8],[-44,13],[-59,14]], rot: -8,  dy: -8 },
+  lie:    { nf: [[20,14],[34,21],[50,21]], ff: [[12,14],[26,21],[16,22]], nb: [[-22,12],[-8,21],[2,22]],    fb: null,                       rot: 0,   dy: 22 },
+  rear:   { nf: [[22,10],[35,19],[30,31]], ff: [[13,10],[27,16],[25,28]], nb: [[-22,10],[-20,29],[-16,45]], fb: [[-30,8],[-32,29],[-34,45]], rot: -20, dy: -2 },
+};
+const EYE = {
+  open:  (c) => `<ellipse cx="5" cy="-2" rx="3.3" ry="4.2" fill="${c}"/><circle cx="6.4" cy="-3.8" r="1.4" fill="#fff"/><path d="M7.5,-5.6l2.6,-2.2M8.3,-4l3,-1" stroke="${c}" stroke-width="1.2" stroke-linecap="round"/>`,
+  happy: (c) => `<path d="M1.5,-1Q5,-6.5 8.5,-1" fill="none" stroke="${c}" stroke-width="2.3" stroke-linecap="round"/>`,
+  sleep: (c) => `<path d="M1.5,-2.5Q5,1.5 8.5,-2.5" fill="none" stroke="${c}" stroke-width="2.3" stroke-linecap="round"/><path d="M8,-2.2l2.4,1.2" stroke="${c}" stroke-width="1.1" stroke-linecap="round"/>`,
+};
+
+function legSVG(pts, color, line, hoof){
+  const d = 'M' + pts.map(p => p.join(',')).join('L');
+  const f = pts[pts.length - 1], k = pts[pts.length - 2];
+  const dx = f[0] - k[0], dy = f[1] - k[1], L = Math.hypot(dx, dy) || 1;
+  const hs = [(f[0] - dx / L * 5).toFixed(1), (f[1] - dy / L * 5).toFixed(1)];
+  return `<path d="${d}" stroke="${line}" stroke-width="13" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` +
+    `<path d="${d}" stroke="${color}" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` +
+    `<path d="M${hs.join(',')}L${f.join(',')}" stroke="${hoof}" stroke-width="10" stroke-linecap="round"/>`;
+}
+
+/**
+ * Draws one unicorn. `u` describes it (see the UNICORNS list), `uid` makes
+ * ids unique on the page, `sil` draws a plain silhouette (locked card),
+ * `mascot` includes both eye styles so CSS can switch to happy eyes.
+ */
+function unicornSVG(u, uid, { sil = false, mascot = false } = {}){
+  const S = '#C9B8E6';
+  const P = sil ? { body: S, line: S, mane: [S], horn: [S, S], hoof: S, wing: S, acc: [S, S] } : {
+    body: u.body, line: u.line || '#9A7BC0', mane: u.mane, horn: u.horn || ['#FFE9A8', '#FFC6E0'],
+    hoof: u.hoof || '#C9A8F2', wing: u.wing, acc: u.accColors || ['#FF8FC0', '#FFD35C'],
+  };
+  const pose = POSES[u.pose || 'stand'];
+  const far = shade(P.body, -0.1), line = P.line, M = P.mane;
+  const mc = (i) => M[i % M.length];
+  let s = '';
+
+  // Ground shadow (not rotated with the body)
+  if (!sil && u.pose !== 'fly') s += `<ellipse cx="0" cy="${u.pose === 'lie' ? 46 : 47}" rx="42" ry="5" fill="#000" opacity=".08"/>`;
+  if (!sil && u.pose === 'fly') s += `<ellipse cx="0" cy="60" rx="30" ry="4" fill="#000" opacity=".06"/>`;
+
+  s += `<g transform="translate(0,${pose.dy}) rotate(${pose.rot} -24 45)">`;
+
+  // Far wing
+  if (u.wing){
+    s += `<g transform="translate(2,-18) rotate(${u.pose === 'fly' ? -40 : -30})"><path d="M0,0C-4,-14 -18,-30 -36,-34C-32,-28 -33,-25 -40,-22C-32,-18 -32,-14 -38,-10C-28,-6 -16,-2 0,0Z" fill="${shade(P.wing, -0.08)}" stroke="${line}" stroke-width="1.4"/></g>`;
+  }
+  // Far legs
+  if (pose.fb) s += legSVG(pose.fb, far, line, P.hoof);
+  s += legSVG(pose.ff, far, line, P.hoof);
+
+  // Tail
+  const tailW = 7;
+  if (u.tail === 'curl'){
+    M.slice(0, 3).forEach((c, j) => {
+      s += `<path d="M-33,${-6 + j * 3}C-56,${-18 + j * 3} -64,${8 + j * 2} -52,${18 + j * 2}C-44,${24 + j} -36,${14 + j} -44,${8 + j}" stroke="${c}" stroke-width="${tailW}" fill="none" stroke-linecap="round"/>`;
+    });
+  } else {
+    M.slice(0, 4).forEach((c, j) => {
+      s += `<path d="M-33,${-8 + j * 3}C-52,${-24 + j * 4} -66,${4 + j * 4} ${-54 + j * 2},${28 + j * 3}" stroke="${c}" stroke-width="${tailW}" fill="none" stroke-linecap="round"/>`;
+    });
+  }
+
+  // Neck outline, body, neck fill (this order merges the shapes neatly)
+  s += `<path d="M18,-6L37,-44" stroke="${line}" stroke-width="25" stroke-linecap="round"/>`;
+  s += `<ellipse cx="0" cy="0" rx="36" ry="22" fill="${P.body}" stroke="${line}" stroke-width="1.6"/>`;
+  if (!sil) s += `<ellipse cx="2" cy="9" rx="24" ry="8" fill="#fff" opacity=".25"/>`;
+  s += `<path d="M18,-6L37,-44" stroke="${P.body}" stroke-width="21.5" stroke-linecap="round"/>`;
+
+  // Near legs
+  s += legSVG(pose.nb, P.body, line, P.hoof);
+  s += legSVG(pose.nf, P.body, line, P.hoof);
+
+  // Blanket (sits on the back)
+  if (u.acc === 'blanket'){
+    s += `<path d="M-20,-20Q0,-26 18,-19L16,-2Q0,3 -18,-3Z" fill="${P.acc[0]}" stroke="${line}" stroke-width="1.2"/>`;
+    s += `<path d="M-18,-3Q0,3 16,-2" fill="none" stroke="${P.acc[1]}" stroke-width="2.4" stroke-dasharray="2 3"/>`;
+    if (!sil) s += sparkle(-1, -11, 3, P.acc[1]);
+  }
+
+  // Mane along the neck (A = neck bottom, dn = along neck, n = back side)
+  const A = [18, -6], dn = [0.447, -0.894], nn = [-0.894, -0.447], NL = 42.5;
+  if (u.maneStyle === 'flow'){
+    M.slice(0, 4).forEach((c, j) => {
+      s += `<path d="M${34 - j * 3},${-62 + j * 2}C${16 - j * 5},${-52 + j * 2} ${20 - j * 6},${-26 + j * 2} ${6 - j * 5},${-2 + j * 3}" stroke="${c}" stroke-width="9" fill="none" stroke-linecap="round"/>`;
+    });
+  } else {
+    for (let i = 0; i <= 5; i++){
+      const t = 0.02 + i * 0.21, off = 8.5 + (i > 3 ? 2 : 0);
+      const x = A[0] + dn[0] * t * NL + nn[0] * off, y = A[1] + dn[1] * t * NL + nn[1] * off;
+      s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(9 - i * 0.25).toFixed(1)}" fill="${mc(i)}"/>`;
+    }
+    s += `<circle cx="27" cy="-60" r="9.5" fill="${mc(6)}"/><circle cx="34" cy="-65" r="7.5" fill="${mc(7)}"/>`;
+  }
+
+  // Scarf / necklace (around the neck)
+  if (u.acc === 'scarf'){
+    s += `<g transform="translate(23.7,-17.4) rotate(26.6)"><rect x="-14" y="-5.5" width="28" height="11" rx="5.5" fill="${P.acc[0]}" stroke="${line}" stroke-width="1"/>${sil ? '' : `<path d="M-6,-5.5V5.5M2,-5.5V5.5" stroke="${P.acc[1]}" stroke-width="3"/>`}</g>`;
+    s += `<path d="M14,-22L9,-2L17,-1L20,-19Z" fill="${P.acc[0]}" stroke="${line}" stroke-width="1"/>`;
+  }
+  if (u.acc === 'necklace'){
+    s += `<path d="M13,-15Q24,-3 34,-17" fill="none" stroke="${P.acc[1]}" stroke-width="2"/>`;
+    s += heartShape(20, -9, 10, P.acc[0]);
+  }
+
+  // Near wing
+  if (u.wing){
+    s += `<g transform="translate(-4,-14) rotate(${u.pose === 'fly' ? -14 : -4})"><path d="M0,0C-4,-14 -18,-30 -36,-34C-32,-28 -33,-25 -40,-22C-32,-18 -32,-14 -38,-10C-28,-6 -16,-2 0,0Z" fill="${P.wing}" stroke="${line}" stroke-width="1.4"/>${sil ? '' : '<path d="M-8,-5L-28,-18M-6,-10L-24,-26" stroke="#fff" stroke-width="1.4" opacity=".7" stroke-linecap="round"/>'}</g>`;
+  }
+
+  // ----- Head (nested group so the mascot can shake its head with CSS) -----
+  s += `<g transform="translate(40,-50) rotate(${u.headRot || 0})"><g class="uni-head">`;
+  // ear
+  s += `<path d="M-7,-9L-5,-26L3,-11Z" fill="${P.body}" stroke="${line}" stroke-width="1.4" stroke-linejoin="round"/>`;
+  if (!sil) s += `<path d="M-4.5,-12L-4,-21L0,-12Z" fill="#FFC6E0"/>`;
+  // skull + snout: outlines first, then fills, so they merge into one shape
+  s += `<ellipse cx="0" cy="0" rx="16" ry="14" fill="${line}" stroke="${line}" stroke-width="3.2"/><ellipse cx="13" cy="7" rx="11" ry="8.5" fill="${line}" stroke="${line}" stroke-width="3.2"/>`;
+  s += `<ellipse cx="0" cy="0" rx="16" ry="14" fill="${P.body}"/><ellipse cx="13" cy="7" rx="11" ry="8.5" fill="${P.body}"/>`;
+  // crown / tiara (behind the horn)
+  if (u.acc === 'crown'){
+    s += `<path d="M-16,-9L-17,-22L-12,-15L-8,-25L-4,-15L0,-21L-1,-11Z" fill="${sil ? S : '#FFD35C'}" stroke="${sil ? S : '#E0A526'}" stroke-width="1.2" stroke-linejoin="round"/>`;
+    if (!sil) s += '<circle cx="-8" cy="-15" r="1.8" fill="#FF8FC0"/>';
+  }
+  if (u.acc === 'tiara'){
+    s += `<path d="M-14,-8Q-6,-16 4,-13" fill="none" stroke="${sil ? S : '#FFD35C'}" stroke-width="2.6" stroke-linecap="round"/><path d="M-8,-13L-6,-19L-4,-13L-6,-11Z" fill="${P.acc[0]}"/>`;
+  }
+  // horn with stripes
+  s += `<defs><clipPath id="${uid}horn"><path d="M-2,-11L8,-12L11,-41Z"/></clipPath></defs>`;
+  s += `<path d="M-2,-11L8,-12L11,-41Z" fill="${P.horn[0]}" stroke="${line}" stroke-width="1.3" stroke-linejoin="round"/>`;
+  if (!sil) s += `<g clip-path="url(#${uid}horn)" stroke="${P.horn[1]}" stroke-width="2.6">${[-15, -21, -27, -33].map(y => `<line x1="-4" y1="${y + 3}" x2="14" y2="${y - 3}"/>`).join('')}</g>`;
+  // forelock
+  s += `<circle cx="-4" cy="-11" r="5.5" fill="${mc(0)}"/><circle cx="1.5" cy="-13.5" r="4.2" fill="${mc(1)}"/>`;
+  // flowers / bow on the head
+  if (u.acc === 'flowers'){
+    s += flower(-14, -5, 0.8, P.acc[0], sil ? S : '#FFE27A', false) + flower(-10, -12, 0.85, P.acc[1], sil ? S : '#fff', false) + flower(10, -12, 0.75, P.acc[0], sil ? S : '#FFE27A', false);
+  }
+  if (u.acc === 'flower'){
+    s += flower(-10, -12, 1.4, P.acc[0], sil ? S : '#FFE27A', false);
+  }
+  if (u.acc === 'bow'){
+    s += `<g transform="translate(-11,-12) rotate(-20)"><path d="M0,0L-8,-6L-8,6ZM0,0L8,-6L8,6Z" fill="${P.acc[0]}" stroke="${line}" stroke-width="1" stroke-linejoin="round"/><circle r="2.6" fill="${P.acc[1]}"/></g>`;
+  }
+  // face details
+  if (!sil){
+    if (mascot){
+      s += `<g class="eye-open">${EYE.open('#3F2B5A')}</g><g class="eye-happy">${EYE.happy('#3F2B5A')}</g>`;
+    } else {
+      s += EYE[u.eye || 'open']('#3F2B5A');
+    }
+    s += `<ellipse cx="2" cy="6" rx="4" ry="2.5" fill="#FF9CC5" opacity=".75"/>`;
+    s += `<circle cx="21" cy="5" r="1.3" fill="${line}"/><path d="M13,11.5Q17,14.5 21,11.5" fill="none" stroke="${line}" stroke-width="1.4" stroke-linecap="round"/>`;
+  }
+  if (u.acc === 'glasses'){
+    s += `<path d="M-1,-3L-14,-5" stroke="${sil ? S : '#6B4A94'}" stroke-width="1.5"/>` + heartShape(5, -3.5, 13, sil ? S : '#FF5FA2', 0.92);
+  }
+  s += '</g></g>';  // head
+  s += '</g>';      // pose group
+  return s;
+}
+
+/* =====================================================================
+   BACKGROUNDS: one per scene (250 x 200). R is a seeded random function.
+   ===================================================================== */
+const SCENES = {
+  rainbow: (uid, R) => skyGrad(uid, '#BFE6FF', '#EFF9FF') + rainbow(125, 170, 118, 9) + cloud(18, 62, 1.1) + cloud(196, 72, 1) + sun(214, 28, 12) +
+    hills(160, 22, '#C8F2CF') + hills(172, 16, '#A9E8B8', 30) + ground(178, '#A9E8B8') + [20, 48, 200, 228, 90, 160].map((x, i) => flower(x, 176 + (i % 2) * 8, 1, ['#FF9CC8', '#FFD35C', '#B79CFF'][i % 3])).join(''),
+  night: (uid, R) => skyGrad(uid, '#2B2760', '#6D5BB0') + starField(R, 45, 0, 0, 250, 140) + moon(205, 38, 17) +
+    hills(165, 26, '#4A3F8E') + hills(178, 18, '#3B3278', 40) + ground(182, '#3B3278'),
+  castle: (uid, R) => skyGrad(uid, '#FFD6EC', '#FFF3FA') + cloud(20, 40, 1) + cloud(150, 28, 0.8) + sun(30, 30, 10, '#FFE9A8') +
+    hills(150, 30, '#E8D4FA', -20) + castle(195, 150, 1.05) + ground(170, '#C9F0D2') + hills(172, 10, '#B5E8C4', 20) + [30, 60, 225].map((x, i) => flower(x, 182, 0.9, ['#FF9CC8', '#B79CFF', '#FFD35C'][i])).join(''),
+  beach: (uid, R) => skyGrad(uid, '#9FDBFF', '#E2F6FF') + sun(40, 34, 14) + cloud(170, 34, 0.9) +
+    `<rect y="112" width="250" height="40" fill="#7FD0E8"/>` + waves(112, '#9BDDF0') + `<path d="M0,150Q125,134 250,150V200H0Z" fill="#FFE7B8"/>` + palm(220, 172, 1) +
+    `<path d="M30,180l5,-8l5,8z" fill="#FFB3C7"/><circle cx="60" cy="186" r="4" fill="#FFD6A5"/><path d="M180,188q6,-10 12,0z" fill="#FFC8E1"/>`,
+  snow: (uid, R) => skyGrad(uid, '#C9DEFF', '#F1F7FF') + mountain(60, 150, 150, 90, '#DCE6FA', '#fff') + mountain(190, 150, 170, 110, '#D2DDF6', '#fff') +
+    `<path d="M0,150Q125,130 250,150V200H0Z" fill="#FFFFFF"/>` + pine(26, 170, 0.9, '#9AD7B4', true) + pine(226, 168, 1, '#8CCFA6', true) +
+    range(18).map(() => snowflake(R() * 250, R() * 150, 2 + R() * 2.5)).join(''),
+  garden: (uid, R) => skyGrad(uid, '#D4F1FF', '#F7FDFF') + cloud(30, 40, 0.9) + cloud(180, 30, 0.8) + hills(160, 24, '#C3EFC9', -10) + ground(170, '#AEE7B9') +
+    range(16).map(i => flower(8 + i * 15.5 + R() * 6, 168 + R() * 22, 1 + R() * 0.4, ['#FF9CC8', '#FFD35C', '#B79CFF', '#FFB38A', '#8FD3FF'][i % 5])).join('') + butterfly(210, 70, 1, '#FFB3D9'),
+  candy: (uid, R) => skyGrad(uid, '#FFE0F4', '#E8DBFF') + cloud(30, 40, 1, '#FFD0EA') + cloud(170, 50, 1.1, '#E0D0FF') +
+    lollipop(28, 150, 1.1, '#FFB3D9', '#fff') + lollipop(222, 146, 1.2, '#B5E6FF', '#fff') + lollipop(196, 160, 0.8, '#FFF1A8', '#FF9CC8') +
+    hills(165, 22, '#FFC8E1') + ground(176, '#C9F5E3') + `<path d="M0,176H250" stroke="#fff" stroke-width="3" stroke-dasharray="8 8"/>` + range(10).map(() => `<circle cx="${R() * 250}" cy="${182 + R() * 16}" r="2.5" fill="${pickR(R, ['#FF9CC8', '#B79CFF', '#FFD35C'])}"/>`).join(''),
+  space: (uid, R) => skyGrad(uid, '#1C1840', '#3E2C74') + starField(R, 60, 0, 0, 250, 170) + planet(40, 42, 14, '#FFB3D9', '#FFE9A8') + planet(212, 30, 8, '#8FD3FF') +
+    `<path d="M-20,200Q125,150 270,200Z" fill="#9F8FD8"/><circle cx="60" cy="190" r="6" fill="#8A79C9"/><circle cx="190" cy="186" r="4" fill="#8A79C9"/>`,
+  sunset: (uid, R) => skyGrad(uid, '#FF9EC4', '#FFE0A6') + `<circle cx="180" cy="140" r="30" fill="#FFF0B8" opacity=".9"/>` + mountain(40, 150, 140, 70, '#C79BD8') + mountain(170, 150, 170, 60, '#B48ADF') +
+    cloud(40, 40, 0.8, '#FFD6E8') + ground(150, '#F4C4B5') + hills(170, 14, '#EDB4A8') + ground(172, '#EDB4A8'),
+  clouds: (uid, R) => skyGrad(uid, '#A7D8FF', '#E6F4FF') + range(6).map(() => sparkle(R() * 250, R() * 90, 2.5, '#fff')).join('') + cloud(20, 50, 0.9, '#fff', 0.8) + cloud(175, 40, 1.1, '#fff', 0.8) +
+    `<g fill="#fff">${range(9).map(i => `<circle cx="${i * 30}" cy="${178 - (i % 2) * 6}" r="${24 + (i % 3) * 4}"/>`).join('')}</g><rect y="180" width="250" height="20" fill="#fff"/>`,
+  autumn: (uid, R) => skyGrad(uid, '#FFE9C7', '#FFF7EA') + tree(30, 170, 1.3, '#FFB38A') + tree(215, 172, 1.4, '#FF9C9C') + tree(180, 160, 0.9, '#FFD27A') +
+    ground(168, '#EFD2A5') +
+    range(12).map(() => { const x = R() * 250, y = R() * 180; return `<ellipse cx="${x}" cy="${y}" rx="3.5" ry="2" fill="${['#FFB38A', '#FF9C9C', '#FFD27A'][Math.floor(R() * 3)]}" transform="rotate(${Math.floor(R() * 180)} ${x} ${y})"/>`; }).join(''),
+  sakura: (uid, R) => skyGrad(uid, '#FFE3EF', '#FFF8FB') + `<path d="M0,120Q20,90 12,40" stroke="#B58E6E" stroke-width="8" fill="none"/><path d="M12,70Q40,60 60,40" stroke="#B58E6E" stroke-width="4" fill="none"/>` +
+    `<g fill="#FFC2DB">${[[10, 30, 30], [45, 30, 24], [70, 20, 18], [0, 60, 20], [30, 5, 20]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</g>` +
+    ground(172, '#D8F2D9') + range(16).map(() => { const x = R() * 250, y = R() * 190; return `<ellipse cx="${x}" cy="${y}" rx="3" ry="1.8" fill="#FFB3D0" transform="rotate(${Math.floor(R() * 180)} ${x} ${y})"/>`; }).join(''),
+  balloons: (uid, R) => skyGrad(uid, '#BDE9FF', '#F0FAFF') + cloud(100, 30, 0.9) + hotAirBalloon(40, 60, 1.2, '#FFB3D9', '#FFF1A8') + hotAirBalloon(210, 50, 1, '#B79CFF', '#C9F5E3') + hotAirBalloon(170, 110, 0.6, '#FFD27A', '#FFB38A') +
+    hills(178, 18, '#C8F2CF') + ground(182, '#C8F2CF'),
+  rainy: (uid, R) => skyGrad(uid, '#CFDAEE', '#F1F5FB') + rainbow(125, 150, 100, 7, undefined, 0.7) + cloud(20, 40, 1.1, '#E2E8F4') + cloud(160, 32, 1.2, '#E2E8F4') +
+    range(28).map(() => { const x = R() * 250, y = 50 + R() * 110; return `<line x1="${x}" y1="${y}" x2="${x - 2}" y2="${y + 7}" stroke="#8FC8F0" stroke-width="1.6" stroke-linecap="round"/>`; }).join('') +
+    ground(172, '#BDE8C4') + `<ellipse cx="50" cy="186" rx="26" ry="5" fill="#A9DBFF"/><ellipse cx="205" cy="190" rx="20" ry="4" fill="#A9DBFF"/>`,
+  mushroom: (uid, R) => skyGrad(uid, '#CFF2DE', '#F2FFF7') + tree(20, 160, 1.4, '#9ED9B3') + tree(230, 158, 1.5, '#8CCFA6') + tree(120, 140, 0.9, '#B3E5C3') +
+    ground(165, '#B8E6B0') + mushroom(40, 184, 1.2, '#FF9CB8') + mushroom(210, 186, 1, '#C8A8F2') + mushroom(230, 180, 0.6, '#FF9CB8') +
+    range(10).map(() => `<circle cx="${R() * 250}" cy="${60 + R() * 100}" r="1.8" fill="#FFF4A8"/>`).join(''),
+  crystal: (uid, R) => skyGrad(uid, '#C6E6F5', '#EEF9FF') + `<path d="M0,0H250V40Q200,70 125,50Q50,70 0,40Z" fill="#B3D8EC"/>` +
+    crystal(20, 176, 1.4, '#D5C2FF') + crystal(230, 176, 1.6, '#A8E6F0') + crystal(200, 172, 0.9, '#FFC2E0') + crystal(55, 178, 0.8, '#A8E6F0') +
+    ground(172, '#E4F4FB') + range(10).map(() => sparkle(R() * 250, 40 + R() * 120, 2 + R() * 2, '#fff')).join(''),
+  aurora: (uid, R) => skyGrad(uid, '#1E2E5C', '#41628F') + starField(R, 30, 0, 0, 250, 110) +
+    `<path d="M-10,70Q60,20 120,60T260,40" stroke="#8FF0C8" stroke-width="18" fill="none" opacity=".45"/><path d="M-10,90Q70,50 130,80T260,60" stroke="#C9A8F2" stroke-width="14" fill="none" opacity=".4"/>` +
+    `<path d="M0,165Q125,145 250,165V200H0Z" fill="#EAF2FF"/>` + pine(30, 170, 1, '#5E9C8A', true) + pine(222, 168, 1.1, '#5E9C8A', true),
+  waterfall: (uid, R) => skyGrad(uid, '#C9EBFF', '#F2FAFF') + `<path d="M0,40H70V160H0Z" fill="#C8B8E6"/><path d="M180,50H250V160H180Z" fill="#C8B8E6"/>` +
+    `<rect x="70" y="40" width="30" height="130" fill="#A9DBFF"/><path d="M76,45V165M86,45V165M94,45V165" stroke="#fff" stroke-width="2" opacity=".6"/>` +
+    `<rect y="160" width="250" height="40" fill="#8FCFF0"/>` + waves(160, '#A9DBFF', 2) + cloud(115, 162, 1, '#fff', 0.8) + tree(215, 55, 0.8, '#9ED9B3') + tree(30, 45, 0.8, '#9ED9B3'),
+  hearts: (uid, R) => skyGrad(uid, '#FFD1E3', '#FFF1F7') + range(12).map(() => heartShape(R() * 240, R() * 130, 10 + R() * 12, pickR(R, ['#FF9CC8', '#FFB3D9', '#FFC8E1', '#E0B8FF']), 0.8)).join('') +
+    cloud(30, 60, 0.8) + hills(168, 20, '#FFC2DB') + ground(175, '#FFB3D0'),
+  fireworks: (uid, R) => skyGrad(uid, '#28235A', '#5A4B9E') + starField(R, 25, 0, 0, 250, 120) + firework(50, 45, 22, '#FFB3D9') + firework(200, 35, 26, '#8FF0C8') + firework(130, 25, 14, '#FFE27A') + firework(230, 90, 14, '#B79CFF') +
+    hills(170, 22, '#463C88') + ground(176, '#3B3278'),
+  butterflies: (uid, R) => skyGrad(uid, '#DFFBEF', '#F7FFFB') + range(6).map(() => butterfly(R() * 230 + 10, R() * 110 + 10, 0.8 + R() * 0.6, pickR(R, ['#FFB3D9', '#B79CFF', '#FFD27A', '#8FD3FF']))).join('') +
+    ground(170, '#BDEBC5') + range(10).map(i => `<line x1="${10 + i * 25}" y1="200" x2="${10 + i * 25}" y2="${150 + (i % 3) * 8}" stroke="#7CCB8A" stroke-width="2"/>` + flower(10 + i * 25, 148 + (i % 3) * 8, 1.3, ['#FF9CC8', '#B79CFF', '#FFD35C'][i % 3], '#fff', false)).join(''),
+  dream: (uid, R) => skyGrad(uid, '#C9B8FF', '#FFD9EE') + moon(206, 40, 16) + range(10).map(() => { const x = R() * 250, y = R() * 140, r = 4 + R() * 10; return `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" opacity=".25" stroke="#fff" stroke-opacity=".7"/><circle cx="${x - r * 0.35}" cy="${y - r * 0.35}" r="${r * 0.2}" fill="#fff" opacity=".8"/>`; }).join('') +
+    `<g fill="#fff" opacity=".95">${range(9).map(i => `<circle cx="${i * 30}" cy="${182 - (i % 2) * 5}" r="${22 + (i % 3) * 3}"/>`).join('')}</g><rect y="184" width="250" height="16" fill="#fff"/>`,
+  tropical: (uid, R) => skyGrad(uid, '#8FE3FF', '#E3FBFF') + sun(200, 36, 14) + `<path d="M20,40q4,-4 8,0q4,-4 8,0M50,28q3,-3 6,0q3,-3 6,0" stroke="#6B4A94" stroke-width="1.4" fill="none"/>` +
+    `<rect y="120" width="250" height="80" fill="#6FD3E0"/>` + waves(120, '#8FE0EA') + `<path d="M0,200Q10,150 125,152Q240,150 250,200Z" fill="#FFE2A8"/>` + palm(30, 170, 1.1) + flower(210, 176, 1.4, '#FF8FC0', '#FFE27A', false) + flower(225, 186, 1.1, '#FFB38A', '#FFE27A', false),
+  shooting: (uid, R) => skyGrad(uid, '#5A3F9E', '#C2A6EC') + starField(R, 35, 0, 0, 250, 140) +
+    `<path d="M40,30L150,70" stroke="#FFF4C2" stroke-width="4" stroke-linecap="round" opacity=".35"/><path d="M90,48L150,70" stroke="#FFF4C2" stroke-width="3" stroke-linecap="round" opacity=".7"/>` + sparkle(152, 71, 6, '#FFF4C2') +
+    hills(170, 22, '#9C7AD6') + ground(176, '#8A68C6'),
+};
+
+/* =====================================================================
+   UNICORNS: the 24 collectible pictures. Each one has a name (spoken
+   when you tap it), a scene, colors, a pose and maybe an accessory.
+   To add a unicorn, add a line here (and a scene above if you like).
+   ===================================================================== */
+const UNICORNS = [
+  { name: 'Rosie',     scene: 'rainbow',     body: '#FFFFFF', mane: ['#FF9CC8', '#FFD27A', '#8FE0B8', '#8FC8FF', '#C8A8F2'], pose: 'stand', x: 118, y: 124 },
+  { name: 'Luna',      scene: 'night',       body: '#E4D8FF', mane: ['#8FA8FF', '#C7A6FF', '#FFFFFF'], wing: '#F4F0FF', pose: 'fly', acc: 'tiara', accColors: ['#8FD3FF', '#FFD35C'], eye: 'happy', x: 110, y: 110, horn: ['#FFF4C2', '#C7A6FF'] },
+  { name: 'Peony',     scene: 'castle',      body: '#FFD9EB', mane: ['#E86AAE', '#FFD35C', '#FF9CC8'], pose: 'prance', acc: 'crown', x: 92, y: 124 },
+  { name: 'Coral',     scene: 'beach',       body: '#FFE6D2', mane: ['#FF9C8A', '#6FD3E0', '#FFD27A'], pose: 'stand', acc: 'glasses', x: 110, y: 128, flip: true },
+  { name: 'Snowy',     scene: 'snow',        body: '#F6FAFF', mane: ['#8FC8FF', '#B8E0FF', '#D5C2FF'], pose: 'stand', acc: 'scarf', accColors: ['#FF8FA9', '#FFFFFF'], x: 126, y: 126, hoof: '#8FC8FF' },
+  { name: 'Daisy',     scene: 'garden',      body: '#FFF6DC', mane: ['#FFD35C', '#FFB38A', '#8FE0B8'], pose: 'prance', acc: 'flowers', accColors: ['#FF9CC8', '#FFFFFF'], x: 120, y: 124, flip: true },
+  { name: 'Candy',     scene: 'candy',       body: '#D6FFF0', mane: ['#FF9CC8', '#C8A8F2', '#FFFFFF'], pose: 'run', acc: 'bow', accColors: ['#FF8FC0', '#FFFFFF'], x: 118, y: 124, maneStyle: 'flow' },
+  { name: 'Nova',      scene: 'space',       body: '#D8CCF6', mane: ['#6FE0D0', '#FF9CC8', '#FFE27A'], wing: '#BDF2EA', pose: 'fly', x: 128, y: 112, flip: true, horn: ['#BDF2EA', '#FF9CC8'] },
+  { name: 'Sunny',     scene: 'sunset',      body: '#FFEAB0', mane: ['#FF9C8A', '#FFB38A', '#FF9CC8'], pose: 'rear', x: 118, y: 130, maneStyle: 'flow' },
+  { name: 'Cloudy',    scene: 'clouds',      body: '#DDF0FF', mane: ['#FFFFFF', '#D5C2FF', '#FFD6EC'], wing: '#FFFFFF', pose: 'fly', x: 122, y: 108, eye: 'happy' },
+  { name: 'Maple',     scene: 'autumn',      body: '#F5DEC8', mane: ['#FF9C6E', '#C98A5E', '#FFD27A'], pose: 'stand', tail: 'curl', acc: 'flower', accColors: ['#FF9C6E', '#FFD35C'], x: 122, y: 124, flip: true, hoof: '#C98A5E' },
+  { name: 'Sakura',    scene: 'sakura',      body: '#FFFFFF', mane: ['#FFB3D0', '#FF8FC0', '#FFD6E8'], pose: 'lie', acc: 'flower', accColors: ['#FFB3D0', '#FFE27A'], x: 150, y: 128, tail: 'curl', eye: 'happy' },
+  { name: 'Skye',      scene: 'balloons',    body: '#D2F2F4', mane: ['#FF9CC8', '#FFD27A', '#8FE0B8', '#8FC8FF'], wing: '#FFFFFF', pose: 'fly', x: 118, y: 112, flip: true, maneStyle: 'flow' },
+  { name: 'Puddle',    scene: 'rainy',       body: '#E8DCFF', mane: ['#6FB8F0', '#A8D8FF', '#FFFFFF'], pose: 'prance', acc: 'bow', accColors: ['#FFD35C', '#FF8FC0'], x: 124, y: 126 },
+  { name: 'Mossy',     scene: 'mushroom',    body: '#D2F5DC', mane: ['#6FC98E', '#FF9CB8', '#FFE27A'], pose: 'stand', acc: 'flowers', accColors: ['#FF9CB8', '#FFE27A'], x: 126, y: 126, tail: 'curl' },
+  { name: 'Crystal',   scene: 'crystal',     body: '#E6FAFF', mane: ['#8FE0F0', '#C8A8F2', '#FFC2E0'], pose: 'rear', acc: 'tiara', accColors: ['#8FE0F0', '#FFD35C'], x: 122, y: 130, flip: true, horn: ['#E0F7FF', '#C8A8F2'] },
+  { name: 'Aurora',    scene: 'aurora',      body: '#FFFFFF', mane: ['#8FF0C8', '#C9A8F2', '#8FC8FF'], wing: '#E8FFF6', pose: 'stand', x: 126, y: 128, maneStyle: 'flow' },
+  { name: 'Splash',    scene: 'waterfall',   body: '#CFE8FF', mane: ['#4FC1D9', '#8FE0F0', '#FFFFFF'], pose: 'lie', x: 150, y: 138, flip: true, tail: 'curl' },
+  { name: 'Honey',     scene: 'hearts',      body: '#FFE3D6', mane: ['#FF6F9A', '#FF9CC8', '#FFD6E8'], pose: 'run', acc: 'necklace', accColors: ['#FF5F8F', '#FFD35C'], x: 120, y: 126, flip: true },
+  { name: 'Sparkle',   scene: 'fireworks',   body: '#EDE0FF', mane: ['#FFD35C', '#FF9CC8', '#FFFFFF'], pose: 'rear', acc: 'crown', x: 124, y: 132 },
+  { name: 'Flutter',   scene: 'butterflies', body: '#FFF4C9', mane: ['#C8A8F2', '#FF9CC8', '#8FC8FF'], wing: '#FFD6F0', pose: 'stand', x: 124, y: 124, flip: true },
+  { name: 'Dreamy',    scene: 'dream',       body: '#FFE0EF', mane: ['#8FA8FF', '#B8C8FF', '#FFFFFF'], pose: 'lie', acc: 'blanket', accColors: ['#B8C8FF', '#FFE27A'], eye: 'sleep', x: 120, y: 134, tail: 'curl', headRot: 8 },
+  { name: 'Kiwi',      scene: 'tropical',    body: '#E6FFD2', mane: ['#FF8FC0', '#FFB38A', '#FFE27A'], pose: 'run', acc: 'flower', accColors: ['#FF8FC0', '#FFE27A'], x: 132, y: 128 },
+  { name: 'Twinkle',   scene: 'shooting',    body: '#F0F0FA', mane: ['#FFE27A', '#FFFFFF', '#C8A8F2'], pose: 'stand', acc: 'blanket', accColors: ['#FF9CC8', '#FFE27A'], x: 120, y: 126, flip: true, horn: ['#FFF4C2', '#FFD35C'] },
+];
+
+// The friendly mascot that cheers the child on.
+const MASCOT = { body: '#FFFFFF', mane: ['#FF9CC8', '#C8A8F2', '#8FC8FF', '#8FE0B8'], pose: 'stand' };
+
+/** Full scene markup (for a <svg viewBox="0 0 250 200">). */
+function sceneSVG(id, uid, sil = false){
+  const u = UNICORNS[id];
+  const bg = sil
+    ? `<rect width="250" height="200" fill="#EFE7FB"/>${hills(172, 16, '#E4D8F7')}${ground(176, '#E4D8F7')}`
+    : SCENES[u.scene](uid, seeded(id * 977 + 13));
+  const sc = u.scale || 0.95;
+  return bg + `<g transform="translate(${u.x || 125},${u.y || 124}) scale(${u.flip ? -sc : sc},${sc})">${unicornSVG(u, uid, { sil })}</g>`;
+}
+function mascotSVG(uid, viewBox = '-70 -98 142 152'){
+  return `<svg viewBox="${viewBox}">${unicornSVG(MASCOT, uid, { mascot: true })}</svg>`;
+}
+
+/* =====================================================================
+   PUZZLE: jigsaw-shaped pieces cut from the 250 x 200 picture
+   ===================================================================== */
+const PW = 250 / PUZZLE_COLS, PH = 200 / PUZZLE_ROWS, TAB = Math.min(PW, PH);
+
+// One side of a piece from (x1,y1) to (x2,y2). sign: 0 = flat edge,
+// +1 = tab sticking out, -1 = hole. The shape is symmetric, so the two
+// neighbouring pieces always fit together.
+function edge(x1, y1, x2, y2, sign){
+  if (!sign) return `L${x2},${y2}`;
+  const L = Math.hypot(x2 - x1, y2 - y1), tx = (x2 - x1) / L, ty = (y2 - y1) / L, nx = ty, ny = -tx;
+  const P = (u, v) => { const a = L / 2 + (u - 0.5) * TAB, b = v * TAB * sign; return `${(x1 + tx * a + nx * b).toFixed(2)},${(y1 + ty * a + ny * b).toFixed(2)}`; };
+  return `L${P(0.38, 0)}C${P(0.42, 0)} ${P(0.40, 0.08)} ${P(0.36, 0.14)}C${P(0.30, 0.24)} ${P(0.40, 0.34)} ${P(0.50, 0.34)}` +
+         `C${P(0.60, 0.34)} ${P(0.70, 0.24)} ${P(0.64, 0.14)}C${P(0.60, 0.08)} ${P(0.58, 0)} ${P(0.62, 0)}L${x2},${y2}`;
+}
+// Tab directions between neighbours (fixed pattern, alternating).
+const hTab = (r, c) => (c % 2 ? 1 : -1);        // between row r and r+1
+const vTab = (r, c) => ((r + c) % 2 ? 1 : -1);  // between column c and c+1
+const PIECES = range(PIECES_PER_PUZZLE).map(i => {
+  const r = Math.floor(i / PUZZLE_COLS), c = i % PUZZLE_COLS;
+  const x0 = c * PW, y0 = r * PH, x1 = x0 + PW, y1 = y0 + PH;
+  const top = r === 0 ? 0 : -hTab(r - 1, c);
+  const right = c === PUZZLE_COLS - 1 ? 0 : vTab(r, c);
+  const bottom = r === PUZZLE_ROWS - 1 ? 0 : hTab(r, c);
+  const left = c === 0 ? 0 : -vTab(r, c - 1);
+  const d = `M${x0},${y0}` + edge(x0, y0, x1, y0, top) + edge(x1, y0, x1, y1, right) + edge(x1, y1, x0, y1, bottom) + edge(x0, y1, x0, y0, left) + 'Z';
+  return { d, cx: x0 + PW / 2, cy: y0 + PH / 2 };
+});
+
+// How many pieces should be on the board for a given streak.
+const piecesFor = (streak) => Math.min(PIECES_PER_PUZZLE, Math.floor(streak * PIECES_PER_PUZZLE / REQUIRED_STREAK));
+
+function buildSlots(){
+  $('slots').innerHTML = PIECES.map(p => `<path d="${p.d}" fill="#F6F0FF" stroke="#D9CBF2" stroke-width="1.4" stroke-dasharray="4 3"/>`).join('') +
+    `<text x="125" y="116" text-anchor="middle" font-size="46" font-weight="800" fill="#E4D8F7" font-family="ui-rounded, system-ui, sans-serif">?</text>`;
+}
+function setPuzzlePicture(){
+  $('puzzlePic').innerHTML = state.puzzleId == null ? '' : sceneSVG(state.puzzleId, 'pz');
+}
+
+let placed = [];      // piece elements currently on the board, in order
+let clipCounter = 0;  // unique clip-path ids
+
+function makePieceEl(index){
+  const p = PIECES[index], id = 'jp' + (clipCounter++);
+  const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  el.setAttribute('viewBox', '0 0 250 200');
+  el.setAttribute('class', 'piece');
+  el.style.transformOrigin = `${p.cx / 2.5}% ${p.cy / 2}%`;
+  el.innerHTML = `<defs><clipPath id="${id}"><path d="${p.d}"/></clipPath></defs>` +
+    `<g clip-path="url(#${id})"><use href="#puzzlePic" xlink:href="#puzzlePic"/></g>` +
+    `<path d="${p.d}" fill="none" stroke="#fff" stroke-width="1.6" stroke-opacity=".9"/>`;
+  return el;
+}
+
+// Add or remove pieces so the board matches the streak. New pieces fly in
+// from `fromEl` (the answer button); removed pieces drift away gently.
+function syncPieces(fromEl){
+  const target = piecesFor(state.streak);
+  const board = $('board');
+  while (placed.length < target){
+    const index = state.order[placed.length];
+    const el = makePieceEl(index);
+    board.appendChild(el);
+    placed.push(el);
+    if (fromEl) flyIn(el, index, fromEl);
+  }
+  let k = 0;
+  while (placed.length > target) flyAway(placed.pop(), k++);
+}
+function flyIn(el, index, fromEl){
+  const b = $('board').getBoundingClientRect(), f = fromEl.getBoundingClientRect(), p = PIECES[index];
+  const dx = (f.left + f.width / 2) - (b.left + p.cx / 250 * b.width);
+  const dy = (f.top + f.height / 2) - (b.top + p.cy / 200 * b.height);
+  animate(el, [
+    { transform: `translate(${dx}px,${dy}px) scale(.3) rotate(-50deg)`, opacity: 0.3 },
+    { transform: `translate(${dx * 0.35}px,${dy * 0.35 - 70}px) scale(1.2) rotate(15deg)`, opacity: 1, offset: 0.6 },
+    { transform: 'none', opacity: 1 },
+  ], { duration: 850, easing: 'ease-in-out' }).onfinish = () => {
+    el.classList.add('land');
+    Sound.piece();
+  };
+}
+function flyAway(el, k){
+  const a = Math.random() * Math.PI * 2, dist = 220 + Math.random() * 160;
+  const anim = animate(el, [
+    { transform: 'none', opacity: 1 },
+    { transform: `translate(${Math.cos(a) * dist}px,${Math.sin(a) * dist - 80}px) rotate(${(Math.random() - 0.5) * 300}deg) scale(.5)`, opacity: 0 },
+  ], { duration: 1100, delay: k * 70, easing: 'cubic-bezier(.4,0,.6,1)', fill: 'forwards' });
+  anim.onfinish = () => el.remove();
+}
+function clearBoard(){
+  placed.forEach(el => el.remove());
+  placed = [];
+}
+
+/* =====================================================================
+   PROGRESS DISPLAYS: stage stars and the heart slots
+   ===================================================================== */
+function renderStars(container, popIndex = -1){
+  container.innerHTML = STAGES.map((_, i) => {
+    const cls = (state.mastered || i < state.stage) ? 'done' : i === state.stage ? 'current' : 'todo';
+    return starSVG(cls + (i === popIndex ? ' pop' : ''));
+  }).join('');
+}
+function renderHearts(popLast = false){
+  $('hearts').innerHTML = range(REQUIRED_STREAK).map(i => {
+    const on = i < state.streak;
+    const pop = popLast && i === state.streak - 1;
+    return `<svg viewBox="0 0 48 48" class="${on ? 'on' : ''}${pop ? '' : ' still'}"><path d="${HEART_PATH}"/></svg>`;
+  }).join('');
+  // Only the newest heart should pop.
+  $('hearts').querySelectorAll('.still').forEach(el => { el.style.animation = 'none'; });
+}
+
+/* =====================================================================
+   EFFECTS: sparkles and confetti
+   ===================================================================== */
+function sparkleBurst(x, y, n = 16){
+  const fx = $('fx');
+  const cols = ['#FFD35C', '#FF9CC8', '#8FE0B8', '#8FC8FF', '#C8A8F2'];
+  for (let i = 0; i < n; i++){
+    const s = document.createElement('div');
+    s.className = 'spark';
+    s.style.left = x + 'px'; s.style.top = y + 'px';
+    s.innerHTML = `<svg viewBox="0 0 48 48" width="26" height="26"><path d="${STAR_PATH}" fill="${pick(cols)}"/></svg>`;
+    fx.appendChild(s);
+    const a = (i / n) * Math.PI * 2 + Math.random() * 0.4, d = 70 + Math.random() * 90;
+    animate(s, [
+      { transform: 'translate(0,0) scale(.3) rotate(0deg)', opacity: 1 },
+      { transform: `translate(${Math.cos(a) * d}px,${Math.sin(a) * d}px) scale(${0.7 + Math.random() * 0.8}) rotate(200deg)`, opacity: 0 },
+    ], { duration: 800 + Math.random() * 400, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'forwards' }).onfinish = () => s.remove();
+  }
+}
+
+const Confetti = {
+  parts: [], running: false,
+  start(){
+    const cv = $('confetti'), dpr = window.devicePixelRatio || 1;
+    cv.width = innerWidth * dpr; cv.height = innerHeight * dpr;
+    const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const cols = ['#FF9CC8', '#FFD35C', '#8FE0B8', '#8FC8FF', '#C8A8F2', '#FFB38A'];
+    this.parts = range(160).map(() => ({
+      x: Math.random() * innerWidth, y: -20 - Math.random() * innerHeight * 0.6,
+      vx: (Math.random() - 0.5) * 2, vy: 2 + Math.random() * 3,
+      r: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.3,
+      w: 8 + Math.random() * 8, h: 5 + Math.random() * 6, c: pick(cols), star: Math.random() < 0.25,
+    }));
+    const t0 = performance.now();
+    this.running = true;
+    const step = (t) => {
+      if (!this.running) return;
+      ctx.clearRect(0, 0, innerWidth, innerHeight);
+      const fade = Math.max(0, 1 - (t - t0 - 3000) / 1200);
+      for (const p of this.parts){
+        p.x += p.vx + Math.sin((t + p.w * 100) / 400); p.y += p.vy; p.r += p.vr;
+        ctx.save(); ctx.globalAlpha = fade; ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c;
+        if (p.star){ ctx.beginPath(); for (let k = 0; k < 10; k++){ const rr = k % 2 ? p.w * 0.35 : p.w * 0.8, a = k * Math.PI / 5; ctx.lineTo(Math.sin(a) * rr, -Math.cos(a) * rr); } ctx.fill(); }
+        else ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      }
+      if (fade > 0) requestAnimationFrame(step); else this.stop();
+    };
+    requestAnimationFrame(step);
+  },
+  stop(){
+    this.running = false;
+    const cv = $('confetti'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
+  },
+};
+
+/* =====================================================================
+   GAME FLOW
+   ===================================================================== */
+let question = null;   // { time, options: [time, ...], correct: index }
+let selected = -1;     // index of the button tapped once
+let busy = false;      // true while feedback is playing
+let tapHints = 0;      // "tap again to choose" is spoken the first few times
+
+const PRAISE = ['Yes!', 'Great job!', 'Super!', 'You got it!', 'Wonderful!', 'Hooray!', 'Amazing!', 'Well done!'];
+
+// Pick a new puzzle picture, preferring unicorns not found yet.
+function choosePuzzlePicture(){
+  const all = range(UNICORNS.length).filter(i => i !== state.puzzleId);
+  const fresh = all.filter(i => !state.unlocked.includes(i));
+  return pick(fresh.length ? fresh : all);
+}
+function startNewPuzzle(){
+  state.puzzleId = choosePuzzlePicture();
+  state.order = shuffle(range(PIECES_PER_PUZZLE));
+  state.streak = 0;
+  saveState();
+  setPuzzlePicture();
+  clearBoard();
+  renderHearts();
+}
+
+function startPlay(){
+  showScreen('play');
+  if (state.puzzleId == null || !UNICORNS[state.puzzleId] || state.order.length !== PIECES_PER_PUZZLE){
+    startNewPuzzle();
+  } else {
+    setPuzzlePicture();
+    clearBoard();
+    syncPieces(null);   // restore saved pieces without animation
+    renderHearts();
+  }
+  renderStars($('playStars'));
+  newQuestion();
+}
+
+function newQuestion(){
+  busy = false; selected = -1;
+  $('clock').classList.remove('hint');
+  const time = pickTime();
+  lastTime = time;
+  const options = makeOptions(time);
+  question = { time, options, correct: options.findIndex(t => sameTime(t, time)) };
+  setClock(time);
+  $('answers').innerHTML = options.map((t, i) =>
+    `<button class="ans" data-i="${i}" aria-label="${spoken(t)}">${ICONS.speaker.replace('<svg', '<svg class="spk"')}<span>${digital(t)}</span><span class="ok">${ICONS.check}</span></button>`
+  ).join('');
+  Voice.say('What time is it?');
+}
+
+function onAnswerTap(i){
+  if (busy || !question) return;
+  Sound.unlock();
+  if (selected === i){ choose(i); return; }   // second tap = choose
+  selected = i;
+  document.querySelectorAll('.ans').forEach((b, k) => b.classList.toggle('sel', k === i));
+  Sound.select();
+  const t = question.options[i];
+  Voice.say(spoken(t) + (tapHints < 3 ? '. Tap again to choose!' : ''));
+  tapHints++;
+}
+
+function choose(i){
+  busy = true; selected = -1;
+  const btns = [...document.querySelectorAll('.ans')];
+  btns.forEach(b => b.classList.remove('sel'));
+  if (i === question.correct) onCorrect(btns[i]); else onWrong(btns[i], btns[question.correct]);
+}
+
+function onCorrect(btn){
+  btn.classList.add('right');
+  Sound.correct();
+  const r = btn.getBoundingClientRect();
+  sparkleBurst(r.left + r.width / 2, r.top + r.height / 2);
+  cheer('cheer');
+  Voice.say(pick(PRAISE) + ' ' + spoken(question.time) + '!');
+
+  state.streak++;
+  const done = state.streak >= REQUIRED_STREAK;
+  if (done) state.streak = REQUIRED_STREAK;  // show the full puzzle for a moment
+  syncPieces(btn);
+  renderHearts(true);
+  if (done){
+    const finished = finishPuzzle();          // progress is saved right away
+    later(() => showCelebration(finished), TIMING.beforeCelebration);
+  } else {
+    saveState();
+    later(newQuestion, TIMING.afterCorrect);
+  }
+}
+
+function onWrong(btn, rightBtn){
+  btn.classList.add('wrong');
+  rightBtn.classList.add('hint');
+  $('clock').classList.add('hint');
+  Sound.oops();
+  cheer('no');
+  Voice.say("Oops! It's " + spoken(question.time) + '.');
+
+  // Apply the rule now (so it is saved), animate a little later.
+  const before = state.streak;
+  if (WRONG_ANSWER_RULE === 'reset') state.streak = 0;
+  else if (WRONG_ANSWER_RULE === 'minus-one') state.streak = Math.max(0, state.streak - 1);
+  saveState();
+  later(() => {
+    if (piecesFor(before) > piecesFor(state.streak)) Sound.away();
+    syncPieces(null);
+    renderHearts();
+  }, TIMING.wrongPiecesFlyAway);
+  later(newQuestion, TIMING.afterWrong);
+}
+
+function cheer(kind){
+  const m = $('playMascot');
+  m.classList.remove('cheer', 'no');
+  void m.offsetWidth;  // restart the CSS animation
+  m.classList.add(kind);
+  later(() => m.classList.remove(kind), 1200);
+}
+
+// Unlock the unicorn and move to the next stage. Returns info for the party.
+function finishPuzzle(){
+  const id = state.puzzleId;
+  const isNew = !state.unlocked.includes(id);
+  if (isNew) state.unlocked.push(id);
+  const oldStage = state.stage;
+  const wasMastered = state.mastered;
+  if (state.stage < STAGES.length - 1) state.stage++;
+  else state.mastered = true;
+  state.streak = 0;
+  state.puzzleId = null;   // a new picture is chosen for the next puzzle
+  state.order = [];
+  saveState();
+  return { id, isNew, advanced: state.stage !== oldStage, newlyMastered: state.mastered && !wasMastered, oldStage };
+}
+
+function showCelebration(info){
+  const u = UNICORNS[info.id];
+  $('celFrame').innerHTML = `<svg viewBox="0 0 250 200">${sceneSVG(info.id, 'cel')}</svg>`;
+  $('celName').textContent = u.name;
+  renderStars($('celStars'), info.advanced ? state.stage - 1 : (info.newlyMastered ? STAGES.length - 1 : -1));
+  const overlay = $('celebrate');
+  overlay.classList.add('show');
+  Sound.jingle();
+  Confetti.start();
+  let text = info.isNew ? 'You did it! You found a new unicorn! Say hello to ' + u.name + '!' : 'You did it! Hello again, ' + u.name + '!';
+  if (info.newlyMastered) text += ' You are a clock master!';
+  else if (info.advanced) text += " Now let's learn new times!";
+  Voice.say(text);
+  const next = $('nextBtn');
+  next.disabled = true;
+  later(() => { next.disabled = false; }, TIMING.nextButtonDelay);
+}
+
+function continueAfterCelebration(){
+  Sound.unlock(); Sound.tap();
+  Confetti.stop();
+  $('celebrate').classList.remove('show');
+  startNewPuzzle();
+  renderStars($('playStars'));
+  newQuestion();
+}
+
+/* =====================================================================
+   SCREENS
+   ===================================================================== */
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === name));
+  if (name !== 'play'){ clearTimers(); busy = false; }
+  if (name === 'home') renderHome();
+  if (name === 'collection') renderCollection();
+}
+
+function renderHome(){
+  renderStars($('homeStars'));
+  $('collCount').textContent = state.unlocked.length;
+}
+
+function renderMute(){
+  document.querySelectorAll('.mute-btn').forEach(b => {
+    b.innerHTML = state.muted ? ICONS.muted : ICONS.speaker;
+    b.setAttribute('aria-pressed', String(state.muted));
+  });
+}
+
+let collectionKey = '';
+function renderCollection(){
+  $('collTitleCount').textContent = state.unlocked.length + ' / ' + UNICORNS.length;
+  const key = state.unlocked.slice().sort((a, b) => a - b).join(',');
+  if (key === collectionKey) return;   // nothing changed since last time
+  collectionKey = key;
+  $('collGrid').innerHTML = UNICORNS.map((u, i) => {
+    const got = state.unlocked.includes(i);
+    return `<button class="card${got ? '' : ' locked'}" data-id="${i}" aria-label="${got ? u.name : 'Not found yet'}">` +
+      `<svg viewBox="0 0 250 200">${sceneSVG(i, 'c' + i, !got)}</svg>${got ? '' : '<span class="q">?</span>'}</button>`;
+  }).join('');
+}
+
+function openViewer(id){
+  const u = UNICORNS[id];
+  $('viewFrame').innerHTML = `<svg viewBox="0 0 250 200">${sceneSVG(id, 'view')}</svg>`;
+  $('viewName').textContent = u.name;
+  $('viewer').classList.add('show');
+  Voice.say('This is ' + u.name + '!');
+}
+
+/* ---------- Parent reset: hold for RESET_HOLD_MS ---------- */
+(function setupReset(){
+  const btn = $('resetBtn'), ring = btn.querySelector('.ring');
+  let start = 0, raf = 0;
+  const stop = () => { cancelAnimationFrame(raf); start = 0; ring.style.strokeDashoffset = 132; };
+  const tick = (t) => {
+    if (!start) return;
+    const p = Math.min(1, (t - start) / RESET_HOLD_MS);
+    ring.style.strokeDashoffset = 132 * (1 - p);
+    if (p >= 1){ stop(); $('resetDialog').classList.add('show'); return; }
+    raf = requestAnimationFrame(tick);
+  };
+  btn.addEventListener('pointerdown', (e) => { e.preventDefault(); start = performance.now(); raf = requestAnimationFrame(tick); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, stop));
+  btn.addEventListener('contextmenu', (e) => e.preventDefault());
+  $('resetNo').addEventListener('click', () => $('resetDialog').classList.remove('show'));
+  $('resetYes').addEventListener('click', () => {
+    const muted = state.muted;
+    state = Object.assign({}, DEFAULT_STATE, { unlocked: [], order: [], muted });
+    saveState();
+    clearBoard();
+    collectionKey = '';
+    $('resetDialog').classList.remove('show');
+    renderHome();
+  });
+})();
+
+/* =====================================================================
+   WIRING
+   ===================================================================== */
+function init(){
+  fillIcons(document);
+  buildClock();
+  buildSlots();
+  $('homeMascot').innerHTML = mascotSVG('mh');
+  $('playMascot').innerHTML = mascotSVG('mp');
+  $('collIcon').innerHTML = mascotSVG('mc', '14 -96 60 60');
+  $('collTitleIcon').innerHTML = mascotSVG('mt', '14 -96 60 60');
+  renderMute();
+  renderHome();
+
+  $('playBtn').addEventListener('click', () => { Sound.unlock(); Sound.tap(); startPlay(); });
+  $('collBtn').addEventListener('click', () => { Sound.unlock(); Sound.tap(); showScreen('collection'); Voice.say('My unicorns!'); });
+  $('homeMascot').addEventListener('click', () => {
+    Sound.unlock();
+    const m = $('homeMascot');
+    m.classList.remove('cheer'); void m.offsetWidth; m.classList.add('cheer');
+    setTimeout(() => m.classList.remove('cheer'), 1000);
+    Voice.say("Hi! Let's read the clock together!");
+  });
+  $('playHomeBtn').addEventListener('click', () => { Sound.unlock(); Sound.tap(); Voice.stop(); showScreen('home'); });
+  $('collHomeBtn').addEventListener('click', () => { Sound.unlock(); Sound.tap(); Voice.stop(); showScreen('home'); });
+  document.querySelectorAll('.mute-btn').forEach(b => b.addEventListener('click', () => {
+    Sound.unlock();
+    state.muted = !state.muted;
+    if (state.muted) Voice.stop();
+    saveState(); renderMute();
+    Sound.tap();
+  }));
+
+  const repeat = () => { if (!question) return; Sound.unlock(); Voice.say('What time is it?'); };
+  $('sayBtn').addEventListener('click', repeat);
+  $('clock').addEventListener('click', repeat);
+
+  $('answers').addEventListener('click', (e) => {
+    const b = e.target.closest('.ans');
+    if (b) onAnswerTap(+b.dataset.i);
+  });
+  $('nextBtn').addEventListener('click', () => { if (!$('nextBtn').disabled) continueAfterCelebration(); });
+
+  $('collGrid').addEventListener('click', (e) => {
+    const c = e.target.closest('.card');
+    if (!c) return;
+    Sound.unlock();
+    const id = +c.dataset.id;
+    if (state.unlocked.includes(id)){ Sound.select(); openViewer(id); }
+    else { Sound.tap(); Voice.say('Keep playing to find this unicorn!'); }
+  });
+  $('viewer').addEventListener('click', () => { Sound.tap(); $('viewer').classList.remove('show'); });
+
+  // Stop talking when the game is hidden (e.g. back to the hub).
+  document.addEventListener('visibilitychange', () => { if (document.hidden) Voice.stop(); });
+  // Prevent pinch-zoom / double-tap zoom gestures on iOS.
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+  document.addEventListener('touchmove', (e) => { if (!e.target.closest('.coll-scroll')) e.preventDefault(); }, { passive: false });
+}
+init();
+</script>
+</body>
+</html>

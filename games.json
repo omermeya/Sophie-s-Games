@@ -5,6 +5,12 @@
       "title": "Unicorn Merge",
       "emoji": "🦄",
       "color": "#FFB3D9"
+    },
+    {
+      "id": "unicorn-clock",
+      "title": "Unicorn Clock",
+      "emoji": "🕐",
+      "color": "#D9C8FF"
     }
   ]
 }
