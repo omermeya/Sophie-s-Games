@@ -5,6 +5,12 @@
       "title": "Unicorn Merge",
       "emoji": "🦄",
       "color": "#FFB3D9"
+    },
+    {
+      "id": "sparkle-2048",
+      "title": "Sparkle 2048",
+      "emoji": "💖",
+      "color": "#FF85BB"
     }
   ]
 }
