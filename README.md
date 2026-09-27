@@ -1,89 +1,89 @@
-# המשחקים שלי: מדריך
+# My Games: Guide
 
-אפליקציית ווב (PWA) שמרכזת את כל המשחקים שלך במקום אחד, מותקנת במסך הבית של האייפד ועובדת גם בלי אינטרנט.
+A web app (PWA) that keeps all your games in one place, installs on the iPad home screen, and works without internet.
 
-## מה יש בתיקייה
+## What's in the folder
 
 ```
-index.html          מסך המשחקים (לא צריך לגעת)
-sw.js               שומר את הקבצים לאופליין (לא צריך לגעת)
-manifest.json       שם ואייקון של האפליקציה
-games.json          רשימת המשחקים ← את זה עורכים כשמוסיפים משחק
-icons/              אייקונים של האפליקציה
+index.html          The games screen (no need to touch)
+sw.js               Saves files for offline use (no need to touch)
+manifest.json       App name and icon
+games.json          The list of games ← edit this when adding a game
+icons/              App icons
 games/
   balloons/
-    index.html      משחק לדוגמה
-.nojekyll           קובץ ריק שנדרש ל-GitHub Pages (לא למחוק)
+    index.html      Example game
+.nojekyll           Empty file required by GitHub Pages (don't delete)
 ```
 
-כל משחק גר בתיקייה משלו בתוך `games`, והקובץ הראשי שלו תמיד נקרא `index.html`.
+Each game lives in its own folder inside `games`, and its main file is always called `index.html`.
 
 ---
 
-## חלק א׳: העלאה לאינטרנט (פעם אחת)
+## Part A: Putting it online (once)
 
-האפליקציה צריכה כתובת באינטרנט כדי שהאייפד יוכל להתקין אותה. הדרך החינמית: GitHub Pages.
+The app needs a web address so the iPad can install it. The free way: GitHub Pages.
 
-1. היכנס ל-github.com וצור חשבון אם אין לך.
-2. למעלה מימין: **+** ← **New repository**.
-3. שם: `games` (או כל שם באנגלית). בחר **Public**. לחץ **Create repository**.
-4. בעמוד שנפתח לחץ על הקישור **uploading an existing file**.
-5. חלץ את קובץ ה-zip במחשב, פתח את התיקייה `games-hub`, סמן **את כל מה שבתוכה** (לא את התיקייה עצמה) וגרור לדפדפן. ודא שגם `.nojekyll` עלה (במק: Cmd+Shift+. מציג קבצים מוסתרים).
-6. לחץ **Commit changes**.
-7. עבור ל-**Settings** ← **Pages** (בתפריט הצד). תחת **Branch** בחר `main` ואת התיקייה `/ (root)`, ולחץ **Save**.
-8. חכה דקה-שתיים ורענן את העמוד. תופיע הכתובת, בסגנון:
-   `https://השם-שלך.github.io/games/`
+1. Go to github.com and create an account if you don't have one.
+2. Top right: **+** → **New repository**.
+3. Name: `games` (or any English name). Choose **Public**. Click **Create repository**.
+4. On the page that opens, click the link **uploading an existing file**.
+5. Unzip the file on your computer, open the `games-hub` folder, select **everything inside it** (not the folder itself) and drag it into the browser. Make sure `.nojekyll` was uploaded too (on a Mac: Cmd+Shift+. shows hidden files).
+6. Click **Commit changes**.
+7. Go to **Settings** → **Pages** (in the side menu). Under **Branch** choose `main` and the folder `/ (root)`, then click **Save**.
+8. Wait a minute or two and refresh the page. The address will appear, something like:
+   `https://your-name.github.io/games/`
 
-> ⚠️ ב-repository ציבורי כל מי שיש לו את הכתובת יכול לראות את המשחקים. זה בסדר למשחקים, אבל אל תשים שם שום דבר פרטי.
+> ⚠️ In a public repository, anyone with the address can see the games. That's fine for games, but don't put anything private there.
 
-## חלק ב׳: התקנה באייפד
+## Part B: Installing on the iPad
 
-1. פתח את הכתובת ב-**Safari** (חייב Safari, לא כרום).
-2. חכה עד שליד הכותרת מופיעה נקודה ירוקה עם "זמין גם אופליין".
-3. לחץ על כפתור השיתוף (ריבוע עם חץ למעלה) ← **הוסף למסך הבית** ← **הוסף**.
-4. פתח את האפליקציה מהאייקון החדש פעם אחת כשיש אינטרנט.
+1. Open the address in **Safari** (it must be Safari, not Chrome).
+2. Wait until a green dot with "available offline" appears next to the title.
+3. Tap the Share button (square with an up arrow) → **Add to Home Screen** → **Add**.
+4. Open the app from the new icon once while connected to the internet.
 
-מעכשיו היא עובדת גם במצב טיסה. בתוך משחק, כפתור ⌂ בפינה מחזיר למסך המשחקים.
+From now on it works even in airplane mode. Inside a game, the ⌂ button in the corner returns to the games screen.
 
 ---
 
-## חלק ג׳: הוספת משחק חדש (כל פעם)
+## Part C: Adding a new game (each time)
 
-הדוגמה כאן: הוספת **Unicorn Merge**.
+The example here: adding **Unicorn Merge**.
 
-### שלב 1: הכן את קובץ המשחק
+### Step 1: Prepare the game file
 
-המשחק צריך להיות **קובץ HTML אחד** שכולל בתוכו את כל הקוד. בשיחה עם Claude שבה נבנה המשחק, הורד את קובץ ה-HTML (למשל `unicorn-merge.html`).
+The game must be **a single HTML file** that contains all of its code. In the Claude conversation where the game was built, download the HTML file (for example `unicorn-merge.html`).
 
-אם המשחק נבנה עבור claude.ai, ראה בחלק ה׳ מה לבקש מ-Claude כדי שיעבוד כאן.
+If the game was built for claude.ai, see Part E for what to ask Claude so it works here.
 
-### שלב 2: בחר מזהה (id)
+### Step 2: Choose an id
 
-המזהה הוא שם התיקייה של המשחק. כללים: **אותיות אנגליות קטנות, ספרות ומקפים בלבד**, בלי רווחים. למשל: `unicorn-merge`.
+The id is the name of the game's folder. Rules: **lowercase English letters, digits and hyphens only**, no spaces. For example: `unicorn-merge`.
 
-### שלב 3: העלה את הקובץ ל-GitHub
+### Step 3: Upload the file to GitHub
 
-הדרך הכי אמינה, ישר מהדפדפן:
+The most reliable way, straight from the browser:
 
-1. ב-repository לחץ **Add file** ← **Create new file**.
-2. בתיבת שם הקובץ הקלד בדיוק:
+1. In the repository, click **Add file** → **Create new file**.
+2. In the file name box, type exactly:
    `games/unicorn-merge/index.html`
-   (כל `/` שתקליד הופך אוטומטית לתיקייה.)
-3. פתח את `unicorn-merge.html` בעורך טקסט (TextEdit / VS Code), העתק את **כל** התוכן והדבק בתיבה הגדולה.
-4. לחץ **Commit changes** ← **Commit changes**.
+   (every `/` you type automatically becomes a folder.)
+3. Open `unicorn-merge.html` in a text editor (TextEdit / VS Code), copy **all** of its contents and paste it into the large box.
+4. Click **Commit changes** → **Commit changes**.
 
-### שלב 4: הוסף את המשחק לרשימה
+### Step 4: Add the game to the list
 
-1. ב-repository לחץ על `games.json` ואז על סמל העיפרון ✏️.
-2. הוסף פסיק אחרי ה-`}` של המשחק האחרון, ואחריו את המשחק החדש.
+1. In the repository, click `games.json` and then the pencil icon ✏️.
+2. Add a comma after the `}` of the last game, followed by the new game.
 
-**לפני:**
+**Before:**
 ```json
 {
   "games": [
     {
       "id": "balloons",
-      "title": "בלונים",
+      "title": "Balloons",
       "emoji": "🎈",
       "color": "#8FD8FF"
     }
@@ -91,13 +91,13 @@ games/
 }
 ```
 
-**אחרי:**
+**After:**
 ```json
 {
   "games": [
     {
       "id": "balloons",
-      "title": "בלונים",
+      "title": "Balloons",
       "emoji": "🎈",
       "color": "#8FD8FF"
     },
@@ -111,84 +111,84 @@ games/
 }
 ```
 
-3. לחץ **Commit changes**.
+3. Click **Commit changes**.
 
-כללי הזהב של הקובץ: כל טקסט בתוך מירכאות כפולות `"`, פסיק **בין** משחקים, ו**אין** פסיק אחרי המשחק האחרון. אם משהו נשבר, הדבק את הקובץ ב-jsonlint.com והוא יראה לך איפה הטעות.
+Golden rules for this file: all text goes inside double quotes `"`, a comma **between** games, and **no** comma after the last game. If something breaks, paste the file into jsonlint.com and it will show you where the mistake is.
 
-### שלב 5: עדכן באייפד
+### Step 5: Update on the iPad
 
-1. חכה בערך דקה (GitHub מעדכן את האתר).
-2. פתח את האפליקציה באייפד **עם אינטרנט** ולחץ על ↻.
-3. המשחק החדש מופיע. **היכנס אליו פעם אחת עם אינטרנט**, כדי שכל מה שהוא צריך יישמר במכשיר.
+1. Wait about a minute (GitHub updates the site).
+2. Open the app on the iPad **with internet** and tap ↻.
+3. The new game appears. **Open it once with internet**, so everything it needs is saved on the device.
 
-זהו. לא צריך להתקין את האפליקציה מחדש.
+That's it. No need to reinstall the app.
 
-### השדות ב-games.json
+### Fields in games.json
 
-| שדה | חובה? | מה זה |
+| Field | Required? | What it is |
 |---|---|---|
-| `id` | כן | שם התיקייה בתוך `games`. אנגלית קטנה, ספרות, מקפים. |
-| `title` | כן | השם שמופיע על הכרטיס. |
-| `emoji` | לא | האימוג׳י על הכרטיס. ברירת מחדל: 🎮 |
-| `color` | לא | צבע הכרטיס בקוד hex, למשל `"#FFC93C"`. |
-| `homeCorner` | לא | איפה כפתור ⌂ בתוך המשחק: `"top-left"` (ברירת מחדל), `"top-right"`, `"bottom-left"`, `"bottom-right"`. שנה אם הכפתור מסתיר משהו במשחק. |
-| `path` | לא | רק אם הקובץ הראשי לא נקרא `index.html`, למשל `"games/my-game/game.html"`. |
-| `assets` | לא | קבצים נוספים לשמירה אופליין (תמונות, צלילים, ספריות), למשל `["games/my-game/music.mp3"]`. |
+| `id` | Yes | The folder name inside `games`. Lowercase English, digits, hyphens. |
+| `title` | Yes | The name shown on the card. |
+| `emoji` | No | The emoji on the card. Default: 🎮 |
+| `color` | No | The card color as a hex code, e.g. `"#FFC93C"`. |
+| `homeCorner` | No | Where the ⌂ button sits inside the game: `"top-left"` (default), `"top-right"`, `"bottom-left"`, `"bottom-right"`. Change it if the button covers something in the game. |
+| `path` | No | Only if the main file isn't called `index.html`, e.g. `"games/my-game/game.html"`. |
+| `assets` | No | Extra files to save for offline use (images, sounds, libraries), e.g. `["games/my-game/music.mp3"]`. |
 
 ---
 
-## חלק ד׳: עדכון ומחיקה של משחק
+## Part D: Updating and removing a game
 
-**עדכון:** ב-GitHub פתח את `games/<id>/index.html`, לחץ ✏️, החלף את כל התוכן בגרסה החדשה ושמור. באייפד פתח את האפליקציה עם אינטרנט ולחץ ↻.
+**Update:** On GitHub open `games/<id>/index.html`, click ✏️, replace all the contents with the new version and save. On the iPad, open the app with internet and tap ↻.
 
-**מחיקה:** מחק את הבלוק של המשחק מ-`games.json` (ושים לב לפסיקים). אפשר גם למחוק את התיקייה שלו, אבל זה לא חובה.
+**Remove:** Delete the game's block from `games.json` (watch the commas). You can also delete its folder, but you don't have to.
 
-**שינוי שם, אימוג׳י או צבע:** רק ב-`games.json`.
-
----
-
-## חלק ה׳: לבקש מ-Claude משחק שמתאים לאפליקציה
-
-כשאתה בונה משחק חדש, הוסף לבקשה את הפסקה הזו:
-
-> בנה את המשחק כקובץ HTML יחיד ועצמאי, עם כל ה-CSS וה-JavaScript בתוכו. הוא ירוץ באייפד בתוך iframe, במסך מלא ובלי אינטרנט: בלי קבצים חיצוניים, בלי תמונות מקישורים, ובלי window.storage או window.claude. לשמירת נתונים השתמש ב-localStorage. אם צריך ספרייה (למשל Matter.js), הטמע את הקוד שלה בתוך הקובץ. תמוך במגע, כלול viewport meta tag, ואל תשים כפתורים חשובים בפינה השמאלית העליונה.
+**Changing the name, emoji or color:** only in `games.json`.
 
 ---
 
-## חלק ו׳: בקרת הורים
+## Part E: Asking Claude for a game that fits the app
 
-בפינת המסך יש כפתור **🔒 הורים**. כדי להיכנס צריך לפתור תרגיל חשבון (כפל וחיבור או חיסור, למשל `17 × 8 − 45`). בכל טעות מופיע תרגיל חדש.
+When you build a new game, add this paragraph to your request:
 
-**זמן משחק**
-- **ללא הגבלה**: אפשר לשחק כמה שרוצים.
-- **מגבלה יומית**: קובעים כמה דקות מותר לשחק ביום. נספר רק הזמן שבו משחק פתוח על המסך, והמונה מתאפס בחצות. אפשר גם לאפס אותו ידנית.
-- **זמן מוגדר**: מאשרים משחק לעוד X דקות, או עד שעה מסוימת (שעה שכבר עברה היום נחשבת למחר).
-- **נעילה עכשיו**: סוגרת את המשחקים מיד.
+> Build the game as a single, self-contained HTML file with all CSS and JavaScript inside it. It will run on an iPad inside an iframe, full screen and without internet: no external files, no images from links, and no window.storage or window.claude. Use localStorage to save data. If a library is needed (e.g. Matter.js), embed its code inside the file. Support touch, include a viewport meta tag, and don't put important buttons in the top-left corner.
 
-כשהזמן נגמר, המשחק נסגר ומופיע מסך "נגמר זמן המשחק". הזמן שנשאר מוצג לילדים ליד הכותרת.
+---
 
-**משחקים**
-- **מוצג**: מורידים את הסימון כדי להסתיר משחק מהמסך.
-- **⭐ מקודם**: המשחק מופיע ראשון וגדול יותר, עם סרט "מומלץ!", נצנצים ואנימציה.
+## Part F: Parental controls
 
-> ההגדרות נשמרות במכשיר עצמו, כך שצריך להגדיר אותן באייפד שהילדים משחקים בו. משחק חדש שמוסיפים ל-`games.json` מוצג אוטומטית.
+The header has a **🔒 Parents** button. To get in, you need to solve a math problem (multiplication plus addition or subtraction, e.g. `17 × 8 − 45`). Every wrong answer brings up a new problem.
 
-## פתרון בעיות
+**Play time**
+- **No limit**: play as much as you like.
+- **Daily limit**: set how many minutes of play are allowed per day. Only time with a game open on screen counts, and the counter resets at midnight. You can also reset it by hand.
+- **Set time**: allow play for the next X minutes, or until a specific time (a time that has already passed today means tomorrow).
+- **Lock now**: closes the games immediately.
 
-**המסך ריק / כתוב שיש שגיאה ב-games.json.** כמעט תמיד פסיק חסר או מיותר. בדוק ב-jsonlint.com.
+When time runs out, the game closes and a "Game time is over" screen appears. Kids see the remaining time next to the title.
 
-**על הכרטיס כתוב "חסר קובץ".** הנתיב לא תואם: ודא שהקובץ נמצא בדיוק ב-`games/<id>/index.html`, ושה-`id` ב-`games.json` זהה לשם התיקייה (כולל אותיות קטנות).
+**Games**
+- **Shown**: uncheck to hide a game from the screen.
+- **⭐ Promoted**: the game appears first and bigger, with a "Featured!" ribbon, sparkles and animation.
 
-**המשחק לא עובד באופליין.** פתחת אותו פעם אחת עם אינטרנט אחרי שהוספת אותו? אם כן, כנראה שהוא טוען משהו מאתר חיצוני. בקש מ-Claude להטמיע הכל בתוך הקובץ (ראה חלק ה׳).
+> Settings are saved on the device itself, so set them on the iPad the kids play on. A new game added to `games.json` is shown automatically.
 
-**שינויים לא מופיעים.** חכה דקה-שתיים אחרי השמירה ב-GitHub (בלשונית **Actions** רואים מתי העדכון הסתיים), ואז ↻ באפליקציה.
+## Troubleshooting
 
-**כפתור ⌂ מסתיר חלק מהמשחק.** הוסף למשחק ב-`games.json` את השדה `"homeCorner": "bottom-left"` (או פינה אחרת).
+**The screen is empty / it says there's an error in games.json.** Almost always a missing or extra comma. Check it at jsonlint.com.
 
-## בדיקה במחשב (לא חובה)
+**A card says "File missing".** The path doesn't match: make sure the file is exactly at `games/<id>/index.html`, and that the `id` in `games.json` matches the folder name (including lowercase).
 
-מתוך התיקייה, בטרמינל:
+**The game doesn't work offline.** Did you open it once with internet after adding it? If so, it probably loads something from an external site. Ask Claude to embed everything inside the file (see Part E).
+
+**Changes don't show up.** Wait a minute or two after saving on GitHub (the **Actions** tab shows when the update is finished), then tap ↻ in the app.
+
+**The ⌂ button covers part of the game.** Add the field `"homeCorner": "bottom-left"` (or another corner) to the game in `games.json`.
+
+## Testing on a computer (optional)
+
+From the folder, in a terminal:
 ```
 python3 -m http.server 8000
 ```
-ואז פתח `http://localhost:8000` בדפדפן. אל תפתח את `index.html` בלחיצה כפולה, זה לא יעבוד.
+Then open `http://localhost:8000` in a browser. Don't open `index.html` by double-clicking; that won't work.

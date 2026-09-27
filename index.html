@@ -1,15 +1,15 @@
 <!doctype html>
-<html lang="he" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>המשחקים שלי</title>
+<title>My Games</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2B1845">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="המשחקים שלי">
+<meta name="apple-mobile-web-app-title" content="My Games">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -44,7 +44,7 @@
   body {
     background: var(--bg);
     color: var(--ink);
-    font-family: "Rubik", "Arial Hebrew", "Segoe UI", system-ui, sans-serif;
+    font-family: "Rubik", "Segoe UI", system-ui, sans-serif;
     font-weight: 500;
     -webkit-tap-highlight-color: transparent;
     -webkit-user-select: none; user-select: none;
@@ -104,7 +104,7 @@
   .tile .name { font-weight: 800; font-size: 1.15rem; text-align: center; line-height: 1.15; }
   .tile.missing { filter: grayscale(1); opacity: .55; cursor: not-allowed; }
   .tile.missing::after {
-    content: "חסר קובץ"; position: absolute; bottom: 10px;
+    content: "File missing"; position: absolute; bottom: 10px;
     font-size: .8rem; background: #fff; border-radius: 99px; padding: 2px 10px;
   }
 
@@ -193,7 +193,7 @@
 
   .summary { font-weight: 800; color: var(--ink) !important; }
   .opt { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
-  .sub { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 30px 10px 0; color: var(--muted); }
+  .sub { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 10px 30px; color: var(--muted); }
   .sub[hidden] { display: none; }
 
   .game-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
@@ -254,13 +254,13 @@
 <body>
 <main>
   <header>
-    <h1>המשחקים שלי</h1>
+    <h1>My Games</h1>
     <span class="time-pill" id="timePill" hidden></span>
     <div class="status" id="statusBox">
       <span class="dot"></span>
-      <span id="statusText">טוען…</span>
-      <button id="refresh" aria-label="בדיקת משחקים חדשים" title="בדיקת משחקים חדשים">↻</button>
-      <button class="parent-btn" data-parent>🔒 הורים</button>
+      <span id="statusText">Loading…</span>
+      <button id="refresh" aria-label="Check for new games" title="Check for new games">↻</button>
+      <button class="parent-btn" data-parent>🔒 Parents</button>
     </div>
   </header>
   <div class="grid" id="grid"></div>
@@ -268,63 +268,63 @@
 </main>
 
 <div id="player" hidden>
-  <iframe id="frame" title="משחק" allow="autoplay; fullscreen"></iframe>
-  <button id="home" class="top-left" aria-label="חזרה למשחקים">⌂</button>
+  <iframe id="frame" title="Game" allow="autoplay; fullscreen"></iframe>
+  <button id="home" class="top-left" aria-label="Back to games">⌂</button>
 </div>
 
 <div class="overlay" id="lockScreen" hidden>
   <div class="big" aria-hidden="true">🌙</div>
-  <h2>נגמר זמן המשחק</h2>
-  <p>אפשר לבקש מאמא או מאבא עוד זמן</p>
-  <button class="parent-btn" data-parent>🔒 הורים</button>
+  <h2>Game time is over</h2>
+  <p>You can ask Mom or Dad for more time</p>
+  <button class="parent-btn" data-parent>🔒 Parents</button>
 </div>
 
 <div class="modal" id="gate" hidden role="dialog" aria-modal="true" aria-labelledby="gateTitle">
   <div class="sheet" id="gateSheet">
-    <h2 id="gateTitle">כניסת הורים</h2>
-    <p>כדי להיכנס צריך לפתור את התרגיל:</p>
+    <h2 id="gateTitle">Parents only</h2>
+    <p>Solve this problem to continue:</p>
     <div class="problem" id="problem"></div>
     <form class="gate-form" id="gateForm" autocomplete="off">
-      <input id="answer" inputmode="numeric" pattern="[0-9]*" aria-label="תשובה">
-      <button class="primary">כניסה</button>
+      <input id="answer" inputmode="numeric" pattern="[0-9]*" aria-label="Answer">
+      <button class="primary">Enter</button>
     </form>
-    <p class="gate-error" id="gateError" hidden>לא נכון. הנה תרגיל חדש.</p>
-    <p><button type="button" data-close>ביטול</button></p>
+    <p class="gate-error" id="gateError" hidden>Not quite. Here is a new problem.</p>
+    <p><button type="button" data-close>Cancel</button></p>
   </div>
 </div>
 
 <div class="modal" id="panel" hidden role="dialog" aria-modal="true" aria-labelledby="panelTitle">
   <div class="sheet wide">
     <div class="sheet-head">
-      <h2 id="panelTitle">בקרת הורים</h2>
-      <button class="primary" data-close>סיום</button>
+      <h2 id="panelTitle">Parental controls</h2>
+      <button class="primary" data-close>Done</button>
     </div>
 
     <section>
-      <h3>זמן משחק</h3>
+      <h3>Play time</h3>
       <p class="summary" id="summary"></p>
-      <label class="opt"><input type="radio" name="mode" value="none"> ללא הגבלה</label>
-      <label class="opt"><input type="radio" name="mode" value="daily"> מגבלה יומית</label>
+      <label class="opt"><input type="radio" name="mode" value="none"> No limit</label>
+      <label class="opt"><input type="radio" name="mode" value="daily"> Daily limit</label>
       <div class="sub" id="dailyBox">
-        <input type="number" id="dailyMin" min="1" max="720" inputmode="numeric"> דקות ביום
-        · שוחקו היום: <b id="usedToday"></b>
-        <button type="button" id="resetUsage">איפוס היום</button>
+        <input type="number" id="dailyMin" min="1" max="720" inputmode="numeric"> minutes per day
+        · Played today: <b id="usedToday"></b>
+        <button type="button" id="resetUsage">Reset today</button>
       </div>
-      <label class="opt"><input type="radio" name="mode" value="window"> זמן מוגדר</label>
+      <label class="opt"><input type="radio" name="mode" value="window"> Set time</label>
       <div class="sub">
-        לעוד <input type="number" id="forMin" min="1" max="720" value="30" inputmode="numeric"> דקות
-        <button type="button" id="grantFor">אישור</button>
+        For the next <input type="number" id="forMin" min="1" max="720" value="30" inputmode="numeric"> minutes
+        <button type="button" id="grantFor">Allow</button>
       </div>
       <div class="sub">
-        עד השעה <input type="time" id="untilTime" value="19:00">
-        <button type="button" id="grantUntil">אישור</button>
+        Until <input type="time" id="untilTime" value="19:00">
+        <button type="button" id="grantUntil">Allow</button>
       </div>
-      <p><button type="button" class="danger" id="lockNow">נעילה עכשיו</button></p>
+      <p><button type="button" class="danger" id="lockNow">Lock now</button></p>
     </section>
 
     <section>
-      <h3>משחקים</h3>
-      <p>משחק מוסתר לא מופיע במסך. משחק מקודם מקבל סרט, נצנצים ואנימציה ומופיע ראשון.</p>
+      <h3>Games</h3>
+      <p>Hidden games don't appear on the screen. Promoted games get a ribbon, sparkles and animation, and appear first.</p>
       <ul class="game-list" id="gameList"></ul>
     </section>
   </div>
@@ -378,7 +378,7 @@
     return Infinity;
   }
   const isLocked = () => remainingMs() <= 0;
-  const clock = ts => new Date(ts).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+  const clock = ts => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const minutes = ms => Math.max(0, Math.ceil(ms / 60000));
 
   const pathOf = g => g.path || `games/${g.id}/index.html`;
@@ -390,12 +390,12 @@
 
   async function loadGames() {
     const res = await fetch('games.json', { cache: 'no-store' });
-    if (!res.ok) throw new Error('לא נמצא הקובץ games.json');
+    if (!res.ok) throw new Error('The file games.json was not found');
     let data;
     try { data = JSON.parse(await res.text()); }
-    catch (e) { throw new Error('יש שגיאת כתיב בקובץ games.json (בדרך כלל פסיק חסר או מיותר). ' + e.message); }
+    catch (e) { throw new Error('There is a typo in games.json (usually a missing or extra comma). ' + e.message); }
     const list = Array.isArray(data) ? data : data.games;
-    if (!Array.isArray(list)) throw new Error('בקובץ games.json חסרה הרשימה "games"');
+    if (!Array.isArray(list)) throw new Error('The list "games" is missing from games.json');
     return list.filter(g => g && g.id);
   }
 
@@ -413,7 +413,7 @@
       b.querySelector('.name').textContent = g.title || g.id;
       if (isPromoted(g.id)) {
         b.insertAdjacentHTML('beforeend',
-          '<span class="ribbon">⭐ מומלץ!</span>' +
+          '<span class="ribbon">⭐ Featured!</span>' +
           '<span class="spark s1" aria-hidden="true">✨</span>' +
           '<span class="spark s2" aria-hidden="true">✨</span>' +
           '<span class="spark s3" aria-hidden="true">⭐</span>');
@@ -423,10 +423,10 @@
     });
     if (!games.length) {
       message.hidden = false;
-      message.innerHTML = 'אין עדיין משחקים. מוסיפים משחק בקובץ <code>games.json</code> ומעלים אותו לתיקייה <code>games</code>.';
+      message.innerHTML = 'No games yet. Add a game to <code>games.json</code> and upload it to the <code>games</code> folder.';
     } else if (!shown.length) {
       message.hidden = false;
-      message.textContent = 'אין משחקים זמינים כרגע.';
+      message.textContent = 'No games available right now.';
     } else {
       message.hidden = true;
     }
@@ -435,14 +435,14 @@
   function showError(err) {
     message.hidden = false;
     message.textContent = err.message;
-    setStatus('offline', 'יש בעיה ברשימת המשחקים');
+    setStatus('offline', 'There is a problem with the games list');
   }
 
   // Download every game (and its listed assets) into the offline cache.
   async function syncOffline() {
-    if (!('caches' in window)) { setStatus('', 'הדפדפן לא תומך במצב אופליין'); return; }
-    if (!navigator.onLine) { setStatus('offline', 'אופליין: משחקים שמורים'); return; }
-    setStatus('', 'שומר למצב אופליין…');
+    if (!('caches' in window)) { setStatus('', 'This browser does not support offline mode'); return; }
+    if (!navigator.onLine) { setStatus('offline', 'Offline: using saved games'); return; }
+    setStatus('', 'Saving for offline…');
     const cache = await caches.open(CACHE);
     let saved = 0;
     missing.clear();
@@ -463,8 +463,8 @@
     render();
     setStatus(saved === games.length ? 'ready' : 'offline',
       saved === games.length
-        ? (saved === 1 ? 'המשחק זמין גם אופליין' : `${saved} משחקים זמינים גם אופליין`)
-        : `${saved} מתוך ${games.length} משחקים זמינים אופליין`);
+        ? (saved === 1 ? 'Game available offline' : `${saved} games available offline`)
+        : `${saved} of ${games.length} games available offline`);
   }
 
   function openGame(id) {
@@ -496,7 +496,7 @@
   homeBtn.addEventListener('click', goHome);
   window.addEventListener('hashchange', route);
   window.addEventListener('online', syncOffline);
-  window.addEventListener('offline', () => setStatus('offline', 'אופליין: משחקים שמורים'));
+  window.addEventListener('offline', () => setStatus('offline', 'Offline: using saved games'));
 
   async function start() {
     refreshBtn.classList.add('spin');
@@ -536,8 +536,8 @@
     timePill.hidden = left === Infinity || locked;
     timePill.classList.toggle('low', left < 5 * 60000);
     timePill.textContent = prefs.mode === 'window' && left > 60 * 60000
-      ? `⏳ אפשר לשחק עד ${clock(prefs.until)}`
-      : `⏳ נשארו ${minutes(left)} דק׳`;
+      ? `⏳ Play until ${clock(prefs.until)}`
+      : `⏳ ${minutes(left)} min left`;
 
     if (!panel.hidden) updatePanelStatus();
   }
@@ -611,13 +611,13 @@
 
   function updatePanelStatus() {
     modeEls.forEach(r => { r.checked = r.value === prefs.mode; });
-    usedEl.textContent = `${Math.floor(usedMs() / 60000)} דק׳`;
+    usedEl.textContent = `${Math.floor(usedMs() / 60000)} min`;
     const left = remainingMs();
     summaryEl.textContent =
-      prefs.mode === 'none' ? 'אין הגבלת זמן.' :
-      left <= 0 ? (prefs.mode === 'daily' ? 'הזמן היומי נגמר. המשחקים נעולים.' : 'המשחקים נעולים.') :
-      prefs.mode === 'daily' ? `נשארו היום ${minutes(left)} דקות מתוך ${prefs.dailyMin}.` :
-      `מותר לשחק עד ${clock(prefs.until)} (עוד ${minutes(left)} דק׳).`;
+      prefs.mode === 'none' ? 'No time limit.' :
+      left <= 0 ? (prefs.mode === 'daily' ? 'Daily time is used up. Games are locked.' : 'Games are locked.') :
+      prefs.mode === 'daily' ? `${minutes(left)} of ${prefs.dailyMin} minutes left today.` :
+      `Play allowed until ${clock(prefs.until)} (${minutes(left)} min left).`;
   }
 
   function setMode(mode, until) {
@@ -673,15 +673,15 @@
 
   function renderGameList() {
     gameList.innerHTML = '';
-    if (!games.length) { gameList.innerHTML = '<li>אין משחקים ברשימה.</li>'; return; }
+    if (!games.length) { gameList.innerHTML = '<li>No games in the list.</li>'; return; }
     games.forEach(g => {
       const li = document.createElement('li');
       li.className = 'game-row' + (isHidden(g.id) ? ' off' : '');
       li.innerHTML = `
         <span class="g-emoji" aria-hidden="true"></span>
         <span class="g-name"></span>
-        <label class="chip"><input type="checkbox" data-k="show"> מוצג</label>
-        <label class="chip"><input type="checkbox" data-k="promo"> ⭐ מקודם</label>`;
+        <label class="chip"><input type="checkbox" data-k="show"> Shown</label>
+        <label class="chip"><input type="checkbox" data-k="promo"> ⭐ Promoted</label>`;
       li.querySelector('.g-emoji').textContent = g.emoji || '🎮';
       li.querySelector('.g-name').textContent = g.title || g.id;
       const show = li.querySelector('[data-k="show"]');

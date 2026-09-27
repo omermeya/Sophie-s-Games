@@ -46,8 +46,8 @@ async function networkFirst(req) {
     } catch {
       return new Response(
         '<meta charset="utf-8"><meta name="viewport" content="width=device-width">' +
-        '<p style="font-family:sans-serif;padding:24px;direction:rtl">' +
-        'המשחק הזה עוד לא נשמר במכשיר. פתחו את האפליקציה פעם אחת עם אינטרנט.</p>',
+        '<p style="font-family:sans-serif;padding:24px">' +
+        'This game is not saved on this device yet. Open the app once while connected to the internet.</p>',
         { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
       );
     }

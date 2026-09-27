@@ -1,8 +1,8 @@
 {
-  "name": "המשחקים שלי",
-  "short_name": "משחקים",
-  "lang": "he",
-  "dir": "rtl",
+  "name": "My Games",
+  "short_name": "Games",
+  "lang": "en",
+  "dir": "ltr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
