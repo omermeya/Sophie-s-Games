@@ -147,8 +147,32 @@
   #banner.show{animation:banner 2.8s cubic-bezier(.34,1.56,.64,1) forwards;}
   @keyframes banner{0%{opacity:0; transform:translate(-50%,-50%) scale(.3)} 14%{opacity:1; transform:translate(-50%,-50%) scale(1.08)} 22%{transform:translate(-50%,-50%) scale(1)} 82%{opacity:1; transform:translate(-50%,-50%) scale(1)} 100%{opacity:0; transform:translate(-50%,-80%) scale(.9)}}
 
+  /* ---------- Game over: the unicorn you raised ---------- */
+  #goHighCv{width:120px; height:120px; animation:bob 3s ease-in-out infinite; filter:drop-shadow(0 8px 12px rgba(255,105,180,.35));}
+  .go-msg{margin:0; font-size:1.05rem; font-weight:500; color:var(--ink); line-height:1.35; text-wrap:balance;}
+  .go-msg b{color:var(--hot);}
+
+  /* ---------- Win party ---------- */
+  #party{position:fixed; inset:0; width:100%; height:100%; z-index:30; pointer-events:none;}
+  #winScreen{background:rgba(255,214,234,.28); -webkit-backdrop-filter:none; backdrop-filter:none;}
+  .win-card{border-width:4px; border-color:#FFE7A0; box-shadow:0 0 0 6px rgba(255,255,255,.6), 0 20px 70px rgba(255,105,180,.5), 0 0 60px rgba(255,211,110,.6);}
+  .win-title{font-size:clamp(2.8rem,15vw,4.4rem);}
+  .win-stage{position:relative; width:190px; height:190px; display:grid; place-items:center;}
+  .win-rays{position:absolute; inset:-12px; border-radius:50%;
+    background:repeating-conic-gradient(from 0deg,rgba(255,211,110,.55) 0 12deg,rgba(255,158,207,.35) 12deg 24deg,rgba(255,255,255,0) 24deg 30deg);
+    -webkit-mask:radial-gradient(circle,#000 30%,transparent 70%); mask:radial-gradient(circle,#000 30%,transparent 70%);
+    animation:spin 9s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #winArt{position:relative; width:170px; height:170px; animation:dance 1.1s ease-in-out infinite; filter:drop-shadow(0 10px 16px rgba(255,105,180,.45));}
+  @keyframes dance{0%,100%{transform:translateY(0) rotate(-7deg) scale(1)} 25%{transform:translateY(-14px) rotate(0) scale(1.06)} 50%{transform:translateY(0) rotate(7deg) scale(1)} 75%{transform:translateY(-14px) rotate(0) scale(1.06)}}
+  .party-row{display:flex; gap:10px; font-size:1.9rem; line-height:1;}
+  .party-row span{display:inline-block; animation:hop .9s ease-in-out infinite;}
+  .party-row span:nth-child(2){animation-delay:.15s} .party-row span:nth-child(3){animation-delay:.3s}
+  .party-row span:nth-child(4){animation-delay:.45s} .party-row span:nth-child(5){animation-delay:.6s}
+  @keyframes hop{50%{transform:translateY(-10px) rotate(10deg)}}
+
   @media (prefers-reduced-motion:reduce){
-    .title,#uniArt,.twinkle,.newbest{animation:none;}
+    .title,#uniArt,.twinkle,.newbest,#goHighCv,#winArt,.win-rays,.party-row span{animation:none;}
     #flash.go{animation-duration:.6s;}
   }
 </style>
@@ -185,7 +209,7 @@
       <span class="twinkle t1">✦</span><span class="twinkle t2">✦</span><span class="twinkle t3">✦</span>
     </div>
     <canvas id="uniArt" aria-hidden="true"></canvas>
-    <p class="sub">Drop cute things into the jar. Match two to merge them, all the way up to a Unicorn!</p>
+    <p class="sub">Drop magic into the jar. Match two to merge them and help your unicorn grow — from a little egg to an Amazing Unicorn!</p>
     <div class="chain-row" id="startChain"></div>
     <button class="btn" id="playBtn">Play</button>
     <p class="hint">Aim with mouse, finger or ← → · Click, tap or Space to drop</p>
@@ -209,16 +233,40 @@
 <div class="overlay" id="overScreen">
   <div class="card">
     <h2 class="go-title">Oh no! The jar is full 💕</h2>
+    <canvas id="goHighCv" aria-hidden="true"></canvas>
+    <p class="go-msg" id="goMsg"></p>
+    <p class="sub" id="goSub"></p>
     <span class="newbest" id="newBest" hidden>New best!</span>
     <div class="stats">
       <div class="stat"><span class="lbl">Score</span><b id="goScore">0</b></div>
       <div class="stat"><span class="lbl">Best</span><b id="goBest">0</b></div>
-      <div class="stat wide"><canvas id="goHighCv"></canvas><div style="text-align:left"><span class="lbl">Highest object</span><br><span class="hn" id="goHigh">Sparkle</span></div></div>
     </div>
     <button class="btn" id="againBtn">Play Again</button>
   </div>
 </div>
 
+<!-- You win! -->
+<div class="overlay" id="winScreen">
+  <div class="card win-card">
+    <div class="party-row" aria-hidden="true"><span>🎉</span><span>🎈</span><span>🌈</span><span>🎈</span><span>🎊</span></div>
+    <div class="title-wrap">
+      <h2 class="title win-title">You Win!</h2>
+      <span class="twinkle t1">✦</span><span class="twinkle t2">✦</span><span class="twinkle t3">✦</span>
+    </div>
+    <div class="win-stage"><div class="win-rays"></div><canvas id="winArt" aria-hidden="true"></canvas></div>
+    <p class="go-msg">You raised an <b>Amazing Unicorn</b>! It's party time!</p>
+    <div class="stats">
+      <div class="stat"><span class="lbl">Score</span><b id="winScore">0</b></div>
+      <div class="stat"><span class="lbl">Best</span><b id="winBest">0</b></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="keepBtn">Keep Playing</button>
+      <button class="btn secondary" id="winNewBtn">New Game</button>
+    </div>
+  </div>
+</div>
+
+<canvas id="party" aria-hidden="true"></canvas>
 <div id="flash"></div>
 <div id="banner"></div>
 
@@ -231,26 +279,37 @@
    ===================================================================== */
 
 const TAU = Math.PI * 2;
-const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla",sans-serif';
 
 /* ---------- MERGE CHAIN CONFIG (smallest → largest) ----------
+   The chain tells the life story of a unicorn: stardust → magic egg →
+   hatching egg → newborn foal → … → the Amazing Unicorn.
+   Every icon is drawn with canvas shapes (no emoji fonts needed).
    name   : display name
-   emoji  : icon drawn on the ball (ignored when `custom` is set)
+   icon   : 'star' | 'egg' | 'hatch' | 'uni' (uni uses the `uni` options)
    r      : radius in world units (the jar is 400 units wide)
    color  : pastel ball colour, rim: deeper edge colour
    points : score awarded when this object is CREATED by a merge      */
+const RAINBOW = ['#FF8FC7', '#FFB36B', '#FFE07A', '#9EE6A8', '#8FD0FF', '#C29BFF'];
 const CHAIN = [
-  { name:'Sparkle',    emoji:'✨', r:15,  color:'#FFF5C4', rim:'#FFD978', points:1  },
-  { name:'Candy',      emoji:'🍬', r:20,  color:'#D3EEFF', rim:'#8CCBF5', points:3  },
-  { name:'Heart',      emoji:'💖', r:26,  color:'#FFD6E9', rim:'#FF8CC6', points:6  },
-  { name:'Flower',     emoji:'🌸', r:33,  color:'#DFF6DA', rim:'#9ED99A', points:10 },
-  { name:'Cupcake',    emoji:'🧁', r:40,  color:'#FFE4CC', rim:'#FFB27F', points:15 },
-  { name:'Butterfly',  emoji:'🦋', r:48,  color:'#EEDDFF', rim:'#B794F2', points:21 },
-  { name:'Crown',      emoji:'👑', r:56,  color:'#FFF1BA', rim:'#F2C14E', points:28 },
-  { name:'Rainbow',    emoji:'🌈', r:65,  color:'#DDF4FF', rim:'#8FD3F2', points:36 },
-  { name:'Magic Wand', emoji:'🪄', r:75,  color:'#E6D8FF', rim:'#A27CEB', points:45 },
-  { name:'Castle',     emoji:'🏰', r:86,  color:'#FFCCE4', rim:'#FF7FB8', points:55 },
-  { name:'Unicorn',    emoji:'🦄', r:100, color:'#FFF6FC', rim:'#FFB6D9', points:66, custom:'unicorn' },
+  { name:'Stardust',        icon:'star',  r:15,  color:'#FFF5C4', rim:'#FFD978', points:1  },
+  { name:'Magic Egg',       icon:'egg',   r:20,  color:'#D3EEFF', rim:'#8CCBF5', points:3  },
+  { name:'Hatching Egg',    icon:'hatch', r:26,  color:'#DFF6DA', rim:'#9ED99A', points:6  },
+  { name:'Newborn Foal',    icon:'uni',   r:33,  color:'#FFE4CC', rim:'#FFB27F', points:10,
+    uni:{ horn:0, mane:0, curl:true, sleepy:true, paci:true, baby:1 } },
+  { name:'Baby Unicorn',    icon:'uni',   r:40,  color:'#D6F1FF', rim:'#86C8F0', points:15,
+    uni:{ horn:.3, mane:0, curl:true, baby:1, bow:'#7FC4F5' } },
+  { name:'Little Unicorn',  icon:'uni',   r:48,  color:'#EEDDFF', rim:'#B794F2', points:21,
+    uni:{ horn:.5, mane:.35, curl:true, baby:.6, flower:true } },
+  { name:'Kid Unicorn',     icon:'uni',   r:56,  color:'#FFF1BA', rim:'#F2C14E', points:28,
+    uni:{ horn:.7, mane:.6, baby:.3, bow:'#FF69B4', lashes:true } },
+  { name:'Teen Unicorn',    icon:'uni',   r:65,  color:'#DDF4FF', rim:'#8FD3F2', points:36,
+    uni:{ horn:.85, mane:.85, lashes:true, starCheek:true, palette:['#C29BFF','#8FD0FF','#FF9ECF','#B8A2FF'] } },
+  { name:'Unicorn',         icon:'uni',   r:75,  color:'#FFD6E9', rim:'#FF8CC6', points:45,
+    uni:{ horn:1, mane:1, lashes:true } },
+  { name:'Rainbow Unicorn', icon:'uni',   r:86,  color:'#E6D8FF', rim:'#A27CEB', points:55,
+    uni:{ horn:1, mane:1, lashes:true, starCheek:true, palette:RAINBOW, sparkles:true } },
+  { name:'Amazing Unicorn', icon:'uni',   r:100, color:'#FFF6FC', rim:'#FFB6D9', points:66, final:true,
+    uni:{ horn:1, mane:1, lashes:true, palette:RAINBOW, wings:true, crown:true, glow:true, sparkles:true, fit:.7 } },
 ];
 
 /* ---------- GAME CONFIG ---------- */
@@ -302,6 +361,13 @@ const Sound = {
   pop(lv){ const f = 880 - lv * 52; this.tone(f * .55, .13, 'sine', .28, f * 1.5); this.tone(f * 1.6, .09, 'triangle', .07, f * 2.2, .03); },
   drop(){ this.tone(560, .09, 'sine', .12, 320); },
   chime(){ [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568].forEach((f, i) => this.tone(f, .7, 'triangle', .14, null, i * .085)); },
+  fanfare(){
+    // "ta-da-da-DAAA" party fanfare with a sparkly tail
+    [[523.25,0,.16],[659.25,.16,.16],[783.99,.32,.16],[1046.5,.48,.6],[783.99,.9,.14],[1046.5,1.04,.9]]
+      .forEach(n => { this.tone(n[0], n[2] + .1, 'square', .07, null, n[1]); this.tone(n[0] / 2, n[2] + .1, 'triangle', .12, null, n[1]); });
+    [1318.5, 1568, 2093, 2637].forEach((f, i) => this.tone(f, .5, 'sine', .08, null, 1.3 + i * .08));
+  },
+  boom(){ this.tone(180 + Math.random() * 120, .35, 'sine', .12, 60); this.tone(1400 + Math.random() * 900, .25, 'triangle', .04, 500, .02); },
   over(){ [659, 587, 523, 392].forEach((f, i) => this.tone(f, .4, 'sine', .15, null, i * .17)); },
 };
 
@@ -324,14 +390,158 @@ function heartPath(g, x, y, s){
   g.closePath();
 }
 
-/* Kawaii unicorn head, drawn with canvas shapes inside radius R */
-function drawUnicorn(g, R){
+/* Tiny kawaii face (used on the star and the egg) */
+function drawFace(g, x, y, s){
+  g.fillStyle = '#3A1D3F';
+  g.beginPath(); g.ellipse(x - s, y, s * .32, s * .42, 0, 0, TAU); g.fill();
+  g.beginPath(); g.ellipse(x + s, y, s * .32, s * .42, 0, 0, TAU); g.fill();
+  g.fillStyle = '#fff';
+  g.beginPath(); g.arc(x - s - s * .1, y - s * .15, s * .12, 0, TAU); g.fill();
+  g.beginPath(); g.arc(x + s - s * .1, y - s * .15, s * .12, 0, TAU); g.fill();
+  g.strokeStyle = '#3A1D3F'; g.lineWidth = s * .2; g.lineCap = 'round';
+  g.beginPath(); g.arc(x, y + s * .35, s * .38, .15 * Math.PI, .85 * Math.PI); g.stroke();
+  g.fillStyle = 'rgba(255,120,180,.55)';
+  g.beginPath(); g.ellipse(x - s * 1.7, y + s * .5, s * .38, s * .22, 0, 0, TAU); g.fill();
+  g.beginPath(); g.ellipse(x + s * 1.7, y + s * .5, s * .38, s * .22, 0, 0, TAU); g.fill();
+}
+
+/* Level 0: a smiling golden star */
+function drawStar(g, R){
   const u = R / 100;
+  g.save(); g.scale(u, u); g.lineJoin = 'round';
+  const sg = g.createRadialGradient(-20, -25, 5, 0, 0, 90);
+  sg.addColorStop(0, '#FFFBE0'); sg.addColorStop(1, '#FFC93C');
+  starPath(g, 0, 6, 86, 40, 5, 0); g.fillStyle = sg; g.fill();
+  g.strokeStyle = '#E9A92E'; g.lineWidth = 7; g.stroke();
+  drawFace(g, 0, 14, 16);
+  g.restore();
+}
+
+function eggPath(g){
+  g.beginPath();
+  g.moveTo(0, -84);
+  g.bezierCurveTo(46, -84, 68, -12, 66, 22);
+  g.bezierCurveTo(64, 64, 34, 86, 0, 86);
+  g.bezierCurveTo(-34, 86, -64, 64, -66, 22);
+  g.bezierCurveTo(-68, -12, -46, -84, 0, -84);
+  g.closePath();
+}
+function paintEggShell(g){
+  const eg = g.createRadialGradient(-22, -30, 6, 0, 0, 96);
+  eg.addColorStop(0, '#FFFFFF'); eg.addColorStop(1, '#F1E2FF');
+  eggPath(g); g.fillStyle = eg; g.fill();
+  g.save(); eggPath(g); g.clip();
+  [[-34,-30,13,'#FFB6D9'],[30,-48,10,'#9FD8FF'],[40,6,14,'#FFE07A'],[-44,38,12,'#9EE6A8'],[12,60,11,'#C9A7FF'],[-8,-62,7,'#FFE07A']]
+    .forEach(p => { g.beginPath(); g.arc(p[0], p[1], p[2], 0, TAU); g.fillStyle = p[3]; g.fill(); });
+  g.fillStyle = '#FFD36E'; starPath(g, -20, 58, 10, 4, 4, 0); g.fill();
+  g.restore();
+  eggPath(g); g.strokeStyle = '#C9A7FF'; g.lineWidth = 6; g.stroke();
+}
+const CRACK = [[-80,4],[-66,4],[-50,-10],[-34,6],[-18,-12],[0,6],[18,-12],[34,6],[50,-10],[66,4],[80,4]];
+function crackClip(g, below){
+  g.beginPath();
+  CRACK.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]));
+  g.lineTo(80, below ? 120 : -120); g.lineTo(-80, below ? 120 : -120); g.closePath();
+}
+
+/* Level 1: a spotted magic egg / Level 2: the egg hatching, a baby peeking out */
+function drawEgg(g, R, hatching){
+  const u = R / 100;
+  g.save(); g.scale(u * .92, u * .92); g.lineJoin = 'round'; g.lineCap = 'round';
+  if (hatching){ g.scale(.82, .82); g.translate(8, 26); }
+  if (!hatching){
+    paintEggShell(g);
+    drawFace(g, 0, 18, 11);
+    g.restore(); return;
+  }
+  // baby head peeking out of the gap
+  g.save(); eggPath(g); g.clip();
+  g.beginPath(); g.ellipse(0, 0, 52, 46, 0, 0, TAU); g.fillStyle = '#FFFFFF'; g.fill();
+  g.strokeStyle = '#F4C6DE'; g.lineWidth = 4; g.stroke();
+  g.restore();
+  // baby horn tip poking up
+  const hg = g.createLinearGradient(0, -20, 0, -64);
+  hg.addColorStop(0, '#F5BE3F'); hg.addColorStop(1, '#FFF0B8');
+  g.beginPath(); g.moveTo(-9, -36); g.lineTo(0, -66); g.lineTo(9, -36); g.closePath();
+  g.fillStyle = hg; g.fill(); g.strokeStyle = '#E9A92E'; g.lineWidth = 3; g.stroke();
+  // peeking eyes
+  g.fillStyle = '#3A1D3F';
+  g.beginPath(); g.ellipse(-18, -12, 7, 9, 0, 0, TAU); g.fill();
+  g.beginPath(); g.ellipse(18, -12, 7, 9, 0, 0, TAU); g.fill();
+  g.fillStyle = '#fff';
+  g.beginPath(); g.arc(-20, -15, 2.8, 0, TAU); g.fill();
+  g.beginPath(); g.arc(16, -15, 2.8, 0, TAU); g.fill();
+  // lower shell
+  const crackLine = () => {
+    g.save(); eggPath(g); g.clip();
+    g.beginPath(); CRACK.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]));
+    g.strokeStyle = '#C9A7FF'; g.lineWidth = 6; g.stroke();
+    g.restore();
+  };
+  g.save(); crackClip(g, true); g.clip(); paintEggShell(g); g.restore();
+  crackLine();
+  // lid tipped off to the side
+  g.save(); g.translate(-34, -40); g.rotate(-.55);
+  g.save(); crackClip(g, false); g.clip(); paintEggShell(g); g.restore();
+  crackLine();
+  g.restore();
+  // little sparkles
+  g.fillStyle = '#FFD36E'; starPath(g, 58, -58, 12, 4, 4, 0); g.fill();
+  g.fillStyle = '#FF8CC6'; starPath(g, -62, -40, 9, 3, 4, .4); g.fill();
+  g.restore();
+}
+
+/* Kawaii unicorn head, drawn with canvas shapes inside radius R.
+   Options (all optional) let the same drawing grow from a newborn foal
+   into the Amazing Unicorn:
+     horn 0..1 (length), mane 0..1 (how many mane tufts), curl (baby tuft),
+     sleepy, paci (pacifier), baby 0..1 (bigger eyes, smaller snout),
+     lashes, bow (colour), flower, starCheek, palette (mane colours),
+     wings, crown, glow, sparkles, fit (extra scale to leave room)       */
+function drawUnicorn(g, R, o){
+  o = o || { horn: 1, mane: 1, lashes: true };
+  const u = R / 100 * (o.fit || 1);
   g.save(); g.scale(u, u); g.lineJoin = 'round'; g.lineCap = 'round';
-  const mane = ['#FF9ECF', '#C9A7FF', '#9FD8FF', '#FFC6E3'];
+  const mane = o.palette || ['#FF9ECF', '#C9A7FF', '#9FD8FF', '#FFC6E3'];
+  const baby = o.baby || 0, hornK = o.horn || 0, maneK = o.mane || 0;
   const blob = (x, y, r, c) => { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fillStyle = c; g.fill(); };
+
+  // golden glow
+  if (o.glow){
+    const hg = g.createRadialGradient(0, 0, 40, 0, 0, 124);
+    hg.addColorStop(0, 'rgba(255,230,140,.9)'); hg.addColorStop(1, 'rgba(255,230,140,0)');
+    g.beginPath(); g.arc(0, 0, 124, 0, TAU); g.fillStyle = hg; g.fill();
+    g.save(); g.globalAlpha = .55; g.fillStyle = '#FFE7A0';
+    for (let i = 0; i < 12; i++){
+      g.rotate(TAU / 12);
+      g.beginPath(); g.moveTo(-7, -70); g.lineTo(0, -124); g.lineTo(7, -70); g.closePath(); g.fill();
+    }
+    g.restore();
+  }
+  // wings
+  if (o.wings){
+    [-1, 1].forEach(s => {
+      g.save(); g.scale(s, 1);
+      const wg = g.createLinearGradient(40, -60, 110, 30);
+      wg.addColorStop(0, '#FFFFFF'); wg.addColorStop(1, '#E3D0FF');
+      g.beginPath();
+      g.moveTo(44, 8);
+      g.quadraticCurveTo(62, -64, 116, -62);
+      g.quadraticCurveTo(114, -44, 104, -36);
+      g.quadraticCurveTo(122, -24, 108, -10);
+      g.quadraticCurveTo(120, 4, 100, 12);
+      g.quadraticCurveTo(106, 30, 80, 30);
+      g.quadraticCurveTo(62, 40, 44, 8);
+      g.closePath();
+      g.fillStyle = wg; g.fill(); g.strokeStyle = '#C9A7FF'; g.lineWidth = 4; g.stroke();
+      g.strokeStyle = 'rgba(185,142,234,.6)'; g.lineWidth = 3;
+      [[60, -20, 100, -38], [62, -4, 104, -10], [60, 10, 92, 16]].forEach(l => { g.beginPath(); g.moveTo(l[0], l[1]); g.lineTo(l[2], l[3]); g.stroke(); });
+      g.restore();
+    });
+  }
   // back mane
-  [[-58,-22,20],[-68,6,20],[-63,34,19],[-50,58,17],[56,-18,16],[63,10,15]].forEach((m, i) => blob(m[0], m[1], m[2], mane[i % 4]));
+  const back = [[-58,-22,20],[-68,6,20],[-63,34,19],[-50,58,17],[56,-18,16],[63,10,15]];
+  back.slice(0, Math.round(back.length * maneK)).forEach((m, i) => blob(m[0], m[1], m[2], mane[i % mane.length]));
   // ears
   const ear = s => {
     g.beginPath(); g.moveTo(s*20,-38); g.quadraticCurveTo(s*34,-80,s*46,-74); g.quadraticCurveTo(s*56,-50,s*50,-28); g.closePath();
@@ -346,58 +556,116 @@ function drawUnicorn(g, R){
   g.beginPath(); g.ellipse(0, 10, 58, 55, 0, 0, TAU); g.fillStyle = hg; g.fill();
   g.strokeStyle = '#F4C6DE'; g.lineWidth = 3; g.stroke();
   // horn
-  const horn = g.createLinearGradient(-10, -50, 10, -95);
-  horn.addColorStop(0, '#F5BE3F'); horn.addColorStop(1, '#FFF0B8');
-  g.beginPath(); g.moveTo(-11, -48); g.lineTo(0, -97); g.lineTo(11, -48); g.closePath();
-  g.fillStyle = horn; g.fill(); g.strokeStyle = '#E9A92E'; g.lineWidth = 2.5; g.stroke();
-  g.strokeStyle = '#FFF8DE'; g.lineWidth = 2.2;
-  [.28, .52, .74].forEach(k => { const y = -48 - 49 * k, hw = 11 * (1 - k); g.beginPath(); g.moveTo(-hw, y + 3); g.lineTo(hw, y - 3); g.stroke(); });
+  const drawHorn = () => {
+    if (hornK <= 0) return;
+    const len = 49 * hornK, top = -48 - len, hw = 11 * (.6 + .4 * hornK);
+    const horn = g.createLinearGradient(-10, -48, 10, top);
+    horn.addColorStop(0, '#F5BE3F'); horn.addColorStop(1, '#FFF0B8');
+    g.beginPath(); g.moveTo(-hw, -46); g.lineTo(0, top); g.lineTo(hw, -46); g.closePath();
+    g.fillStyle = horn; g.fill(); g.strokeStyle = '#E9A92E'; g.lineWidth = 2.5; g.stroke();
+    g.strokeStyle = '#FFF8DE'; g.lineWidth = 2.2;
+    const bands = hornK < .45 ? [.45] : hornK < .8 ? [.35, .65] : [.28, .52, .74];
+    bands.forEach(k => { const y = -48 - len * k, w = hw * (1 - k); g.beginPath(); g.moveTo(-w, y + 3); g.lineTo(w, y - 3); g.stroke(); });
+  };
+  if (!o.crown) drawHorn();
   // front mane tufts
-  [[-28,-42,15],[-10,-50,13],[-50,-6,14],[-54,22,12]].forEach((m, i) => blob(m[0], m[1], m[2], mane[(i + 1) % 4]));
-  blob(16, -46, 11, mane[0]);
+  const front = [[-28,-42,15],[-10,-50,13],[-50,-6,14],[-54,22,12]];
+  front.slice(0, Math.round(front.length * maneK)).forEach((m, i) => blob(m[0], m[1], m[2], mane[(i + 1) % mane.length]));
+  if (maneK >= 1) blob(16, -46, 11, mane[0]);
+  // baby curl
+  if (o.curl){
+    blob(-26, -42, 11, mane[0]);
+    g.beginPath(); g.arc(-26, -44, 5, Math.PI * .2, Math.PI * 1.8); g.strokeStyle = '#FF7FB8'; g.lineWidth = 2.5; g.stroke();
+  }
+  // crown (horn rises through it)
+  if (o.crown){
+    const cg = g.createLinearGradient(0, -78, 0, -40);
+    cg.addColorStop(0, '#FFF0B8'); cg.addColorStop(1, '#F5BE3F');
+    g.beginPath();
+    g.moveTo(-30, -40); g.lineTo(-34, -72); g.lineTo(-18, -56); g.lineTo(0, -80); g.lineTo(18, -56); g.lineTo(34, -72); g.lineTo(30, -40);
+    g.closePath(); g.fillStyle = cg; g.fill(); g.strokeStyle = '#E0A02A'; g.lineWidth = 3; g.stroke();
+    [[-34,-72,'#FF69B4'],[34,-72,'#8FD0FF'],[-15,-47,'#C29BFF'],[15,-47,'#9EE6A8']].forEach(j => blob(j[0], j[1], 5, j[2]));
+    drawHorn();
+  }
   // snout
-  g.beginPath(); g.ellipse(0, 36, 32, 21, 0, 0, TAU); g.fillStyle = '#FFE4F1'; g.fill();
+  const sk = 1 - baby * .22;
+  g.beginPath(); g.ellipse(0, 36 + baby * 2, 32 * sk, 21 * sk, 0, 0, TAU); g.fillStyle = '#FFE4F1'; g.fill();
   g.fillStyle = '#EFA3C8';
-  g.beginPath(); g.ellipse(-11, 32, 3.6, 2.6, 0, 0, TAU); g.fill();
-  g.beginPath(); g.ellipse(11, 32, 3.6, 2.6, 0, 0, TAU); g.fill();
-  g.beginPath(); g.arc(0, 40, 7, .15 * Math.PI, .85 * Math.PI); g.strokeStyle = '#D86FA3'; g.lineWidth = 3; g.stroke();
+  g.beginPath(); g.ellipse(-11 * sk, 32, 3.6, 2.6, 0, 0, TAU); g.fill();
+  g.beginPath(); g.ellipse(11 * sk, 32, 3.6, 2.6, 0, 0, TAU); g.fill();
+  if (o.paci){
+    g.beginPath(); g.ellipse(0, 44, 15, 8, 0, 0, TAU); g.fillStyle = '#8FD0FF'; g.fill();
+    g.strokeStyle = '#5FAFE6'; g.lineWidth = 2.5; g.stroke();
+    g.beginPath(); g.arc(0, 52, 7, 0, TAU); g.strokeStyle = '#FF9ECF'; g.lineWidth = 3.5; g.stroke();
+  } else {
+    g.beginPath(); g.arc(0, 40, 7, .15 * Math.PI, .85 * Math.PI); g.strokeStyle = '#D86FA3'; g.lineWidth = 3; g.stroke();
+  }
   // eyes
+  const ek = 1 + baby * .25;
   [-1, 1].forEach(s => {
     const ex = s * 24, ey = 2;
-    g.beginPath(); g.ellipse(ex, ey, 9.5, 12, 0, 0, TAU); g.fillStyle = '#3A1D3F'; g.fill();
-    g.fillStyle = '#fff';
-    g.beginPath(); g.arc(ex - 3, ey - 4.5, 4, 0, TAU); g.fill();
-    g.beginPath(); g.arc(ex + 3, ey + 4.5, 1.8, 0, TAU); g.fill();
-    g.strokeStyle = '#3A1D3F'; g.lineWidth = 2.4;
-    g.beginPath(); g.moveTo(ex + s * 8, ey - 7); g.lineTo(ex + s * 14, ey - 12); g.stroke();
-    g.beginPath(); g.moveTo(ex + s * 9.5, ey - 2); g.lineTo(ex + s * 16, ey - 4); g.stroke();
+    if (o.sleepy){
+      g.strokeStyle = '#3A1D3F'; g.lineWidth = 3.4;
+      g.beginPath(); g.arc(ex, ey - 2, 9, .15 * Math.PI, .85 * Math.PI); g.stroke();
+    } else {
+      g.beginPath(); g.ellipse(ex, ey, 9.5 * ek, 12 * ek, 0, 0, TAU); g.fillStyle = '#3A1D3F'; g.fill();
+      g.fillStyle = '#fff';
+      g.beginPath(); g.arc(ex - 3 * ek, ey - 4.5 * ek, 4 * ek, 0, TAU); g.fill();
+      g.beginPath(); g.arc(ex + 3 * ek, ey + 4.5 * ek, 1.8 * ek, 0, TAU); g.fill();
+      if (o.lashes){
+        g.strokeStyle = '#3A1D3F'; g.lineWidth = 2.4;
+        g.beginPath(); g.moveTo(ex + s * 8, ey - 7); g.lineTo(ex + s * 14, ey - 12); g.stroke();
+        g.beginPath(); g.moveTo(ex + s * 9.5, ey - 2); g.lineTo(ex + s * 16, ey - 4); g.stroke();
+      }
+    }
     g.beginPath(); g.ellipse(s * 40, 20, 9, 5.5, 0, 0, TAU); g.fillStyle = 'rgba(255,140,190,.7)'; g.fill();
   });
+  // accessories
+  if (o.starCheek){ g.fillStyle = '#FFC93C'; starPath(g, -40, 36, 7, 3, 5, 0); g.fill(); }
+  if (o.bow){
+    g.save(); g.translate(36, -40); g.rotate(.3); g.fillStyle = o.bow;
+    g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(-20, -18, -20, 0); g.quadraticCurveTo(-20, 18, 0, 0); g.fill();
+    g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(20, -18, 20, 0); g.quadraticCurveTo(20, 18, 0, 0); g.fill();
+    blob(0, 0, 5.5, '#fff'); blob(0, 0, 4, o.bow);
+    g.restore();
+  }
+  if (o.flower){
+    g.save(); g.translate(36, -40);
+    for (let i = 0; i < 5; i++){ const a = i * TAU / 5; blob(Math.cos(a) * 8, Math.sin(a) * 8, 7, '#FFB6D9'); }
+    blob(0, 0, 5.5, '#FFD36E');
+    g.restore();
+  }
+  if (o.sparkles){
+    g.fillStyle = '#FFD36E'; starPath(g, 70, -60, 10, 3.5, 4, 0); g.fill();
+    g.fillStyle = '#FFFFFF'; starPath(g, -72, -58, 8, 3, 4, .3); g.fill();
+    g.fillStyle = '#FF8CC6'; starPath(g, 74, 50, 7, 2.5, 4, .2); g.fill();
+  }
   g.restore();
 }
 
-/* Draw one merge object (ball + icon + blush + gloss) centred at 0,0 */
+/* Draw one merge object (ball + icon + gloss) centred at 0,0 */
 function drawObject(g, lv, R){
   const d = CHAIN[lv];
   const grad = g.createRadialGradient(-R * .35, -R * .4, R * .08, 0, 0, R);
   grad.addColorStop(0, '#FFFFFF'); grad.addColorStop(.4, d.color); grad.addColorStop(1, d.rim);
   g.beginPath(); g.arc(0, 0, R, 0, TAU); g.fillStyle = grad; g.fill();
   const lw = Math.max(1.2, R * .07);
-  if (d.custom === 'unicorn'){
+  if (d.final){
     const rb = g.createLinearGradient(-R, -R, R, R);
-    ['#FF9ECF','#FFD36E','#B8F2C8','#9FD8FF','#C9A7FF'].forEach((c, i, a) => rb.addColorStop(i / (a.length - 1), c));
+    RAINBOW.forEach((c, i, a) => rb.addColorStop(i / (a.length - 1), c));
     g.beginPath(); g.arc(0, 0, R - lw / 2, 0, TAU); g.strokeStyle = rb; g.lineWidth = lw * 1.4; g.stroke();
-    drawUnicorn(g, R * .9);
   } else {
     g.beginPath(); g.arc(0, 0, R - lw / 2, 0, TAU); g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = lw; g.stroke();
-    g.font = `${R * 1.12}px ${EMOJI_FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(d.emoji, 0, R * .07);
-    g.fillStyle = 'rgba(255,105,180,.32)';
-    g.beginPath(); g.ellipse(-R * .6, R * .42, R * .15, R * .085, 0, 0, TAU); g.fill();
-    g.beginPath(); g.ellipse(R * .6, R * .42, R * .15, R * .085, 0, 0, TAU); g.fill();
   }
+  g.save();
+  g.beginPath(); g.arc(0, 0, R - lw, 0, TAU); g.clip();
+  if (d.icon === 'star') drawStar(g, R * .85);
+  else if (d.icon === 'egg') drawEgg(g, R * .9, false);
+  else if (d.icon === 'hatch') drawEgg(g, R * .9, true);
+  else drawUnicorn(g, R * .9, d.uni);
+  g.restore();
   // glossy highlight
-  g.beginPath(); g.ellipse(-R * .4, -R * .56, R * .26, R * .12, -.6, 0, TAU); g.fillStyle = 'rgba(255,255,255,.72)'; g.fill();
+  g.beginPath(); g.ellipse(-R * .4, -R * .56, R * .26, R * .12, -.6, 0, TAU); g.fillStyle = 'rgba(255,255,255,.6)'; g.fill();
   g.beginPath(); g.arc(-R * .7, -R * .2, R * .06, 0, TAU); g.fill();
 }
 
@@ -473,7 +741,7 @@ function updateChain(){
 /* =====================================================================
    GAME STATE
    ===================================================================== */
-let state = 'start';           // start | playing | paused | over
+let state = 'start';           // start | playing | paused | won | over
 let bodies = [], nextId = 1;
 let score = 0, highest = 0, drops = 0;
 let curLv = 0, nextLv = 0, dropX = CFG.JAR_W / 2, canDrop = true, cooldown = 0, heldT = 0;
@@ -481,6 +749,7 @@ let dangerT = 0, dangerNear = false, dangerOver = false;
 let comboCount = 0, comboTimer = 0, comboText = null;
 let parts = [], floats = [], confetti = [], decor = [];
 let shakeT = 0, time = 0;
+let won = false, winPending = false, gameId = 0;
 const keys = { left: false, right: false };
 
 function makeBody(lv, x, y){
@@ -620,8 +889,16 @@ function doMerge(A, B){
     Sound.pop(lv + 1);
     if (live){
       addScore(CHAIN[lv + 1].points, x, y, false);
-      if (lv + 1 > highest){ highest = lv + 1; updateChain(); }
-      if (lv + 1 === LAST){ celebrate('You made a Unicorn! 🦄'); Sound.chime(); }
+      const isNew = lv + 1 > highest;
+      if (isNew){ highest = lv + 1; updateChain(); }
+      if (lv + 1 === LAST && !won){
+        won = true; celebrate('Amazing Unicorn! 🦄'); Sound.chime();
+        const id = gameId;
+        setTimeout(() => { if (id === gameId) showWin(); }, 1100);
+      } else if (isNew && lv + 1 >= 3){
+        showBanner(lv + 1 === 3 ? 'Your unicorn hatched! 🐣' : `${CHAIN[lv + 1].name}! ✨`);
+        Sound.chime();
+      }
     }
   }
   if (live) registerCombo();
@@ -656,9 +933,13 @@ function burst(x, y, lv, big){
   parts.push({ type: 'ring', x, y, life: 0, max: .38, size: CHAIN[Math.min(lv, LAST)].r });
 }
 
+function showBanner(text){
+  const bn = $('banner'); bn.textContent = text; bn.classList.remove('show'); void bn.offsetWidth; bn.classList.add('show');
+}
+
 function celebrate(text){
   const fl = $('flash'); fl.classList.remove('go'); void fl.offsetWidth; fl.classList.add('go');
-  const bn = $('banner'); bn.textContent = text; bn.classList.remove('show'); void bn.offsetWidth; bn.classList.add('show');
+  showBanner(text);
   shakeT = .5;
   const cols = ['#FF69B4','#FFB6D9','#E6CCFF','#BDE3FF','#FFD36E','#B8F2C8','#FFFFFF'];
   for (let i = 0; i < 170; i++){
@@ -682,6 +963,118 @@ function initDecor(){
 }
 
 /* =====================================================================
+   PARTY — fireworks, balloons and confetti rain for the big win
+   (its own canvas above the overlays so the fun stays sharp)
+   ===================================================================== */
+const Party = {
+  cv: null, g: null, w: 0, h: 0, dpr: 1,
+  on: false, left: 0, rocketT: 0, balloonT: 0, confT: 0,
+  sparks: [], rockets: [], balloons: [], conf: [],
+  COLS: ['#FF69B4', '#FFD36E', '#9EE6A8', '#8FD0FF', '#C29BFF', '#FF8FC7', '#FFFFFF'],
+  resize(){
+    this.cv = this.cv || $('party'); this.g = this.g || this.cv.getContext('2d');
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.w = window.innerWidth; this.h = window.innerHeight;
+    this.cv.width = Math.round(this.w * this.dpr); this.cv.height = Math.round(this.h * this.dpr);
+  },
+  start(sec){
+    this.on = true; this.left = sec; this.rocketT = 0; this.balloonT = 0; this.confT = 0;
+    for (let i = 0; i < 14; i++) this.balloon(true);
+    for (let i = 0; i < 5; i++) this.rocket(i * .12);
+    for (let i = 0; i < 220; i++) this.confetto(true);
+  },
+  stop(clear){
+    this.on = false;
+    if (clear !== false){ this.sparks = []; this.rockets = []; this.balloons = []; this.conf = []; }
+    else { this.rockets = []; this.balloons.forEach(b => { b.vy = 900 + Math.random() * 400; }); }  // balloons whoosh away
+  },
+  rocket(delay){
+    this.rockets.push({ x: this.w * (.12 + Math.random() * .76), y: this.h + 10, vy: -(this.h * .9 + Math.random() * this.h * .4),
+      ty: this.h * (.12 + Math.random() * .35), delay: delay || 0, color: this.COLS[(Math.random() * 6) | 0] });
+  },
+  explode(x, y, color){
+    const n = 60 + (Math.random() * 30 | 0), c2 = this.COLS[(Math.random() * 7) | 0];
+    for (let i = 0; i < n; i++){
+      const a = i / n * TAU + Math.random() * .1, sp = 140 + Math.random() * 180;
+      this.sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0, max: .9 + Math.random() * .7,
+        color: i % 3 ? color : c2, star: Math.random() < .3, rot: Math.random() * TAU });
+    }
+    Sound.boom();
+  },
+  balloon(initial){
+    const s = 26 + Math.random() * 18;
+    this.balloons.push({ x: Math.random() * this.w, y: initial ? this.h + Math.random() * this.h * .6 : this.h + s * 2,
+      s, vy: 70 + Math.random() * 70, ph: Math.random() * TAU, color: this.COLS[(Math.random() * 6) | 0] });
+  },
+  confetto(initial){
+    this.conf.push({ x: Math.random() * this.w, y: initial ? -Math.random() * this.h : -20, vx: (Math.random() - .5) * 80,
+      vy: 90 + Math.random() * 160, w: 6 + Math.random() * 5, h: 9 + Math.random() * 7, rot: Math.random() * TAU,
+      vr: (Math.random() - .5) * 10, ph: Math.random() * TAU, heart: Math.random() < .25, color: this.COLS[(Math.random() * 7) | 0] });
+  },
+  tick(dt){
+    if (!this.g) return;
+    const busy = this.on || this.sparks.length || this.rockets.length || this.balloons.length || this.conf.length;
+    if (!busy) return;
+    if (this.on){
+      // big burst for the first seconds, then a gentle party while the win card is open
+      const hot = this.left > 0; this.left -= dt;
+      if ((this.rocketT -= dt) <= 0){ this.rocket(); this.rocketT = hot ? .35 + Math.random() * .3 : 1.1 + Math.random() * .8; }
+      if ((this.balloonT -= dt) <= 0){ this.balloon(); this.balloonT = hot ? .3 : 1.2; }
+      if ((this.confT -= dt) <= 0){ for (let i = 0; i < (hot ? 6 : 2); i++) this.confetto(); this.confT = .08; }
+    }
+    const g = this.g, H = this.h;
+    for (const r of this.rockets){
+      if (r.delay > 0){ r.delay -= dt; continue; }
+      r.y += r.vy * dt; r.vy *= Math.pow(.2, dt);
+      if (r.y <= r.ty || r.vy > -80){ r.done = true; this.explode(r.x, r.y, r.color); }
+    }
+    this.rockets = this.rockets.filter(r => !r.done);
+    for (const p of this.sparks){ p.life += dt; p.vx *= Math.pow(.25, dt); p.vy = p.vy * Math.pow(.25, dt) + 90 * dt; p.x += p.vx * dt; p.y += p.vy * dt; }
+    this.sparks = this.sparks.filter(p => p.life < p.max);
+    for (const b of this.balloons){ b.y -= b.vy * dt; b.ph += dt * 1.6; }
+    this.balloons = this.balloons.filter(b => b.y > -b.s * 4);
+    for (const c of this.conf){ c.vy = Math.min(c.vy + 30 * dt, 260); c.x += (c.vx + Math.sin(time * 3 + c.ph) * 40) * dt; c.y += c.vy * dt; c.rot += c.vr * dt; }
+    this.conf = this.conf.filter(c => c.y < H + 30);
+
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, this.cv.width, this.cv.height);
+    const d = this.dpr;
+    // balloons
+    for (const b of this.balloons){
+      const x = b.x + Math.sin(b.ph) * 14, y = b.y, s = b.s;
+      g.setTransform(d, 0, 0, d, x * d, y * d); g.rotate(Math.sin(b.ph) * .08);
+      g.strokeStyle = 'rgba(138,46,100,.45)'; g.lineWidth = 1.5;
+      g.beginPath(); g.moveTo(0, s * 1.2); g.quadraticCurveTo(s * .3, s * 1.8, -s * .1, s * 2.6); g.stroke();
+      const bg = g.createRadialGradient(-s * .35, -s * .45, s * .1, 0, 0, s * 1.2);
+      bg.addColorStop(0, '#FFFFFF'); bg.addColorStop(.35, b.color); bg.addColorStop(1, b.color);
+      g.beginPath(); g.ellipse(0, 0, s * .85, s * 1.05, 0, 0, TAU); g.fillStyle = bg; g.fill();
+      g.beginPath(); g.moveTo(-s * .14, s * 1.2); g.lineTo(s * .14, s * 1.2); g.lineTo(0, s * 1.02); g.closePath(); g.fillStyle = b.color; g.fill();
+      g.beginPath(); g.ellipse(-s * .32, -s * .45, s * .16, s * .26, -.5, 0, TAU); g.fillStyle = 'rgba(255,255,255,.7)'; g.fill();
+    }
+    // rockets
+    g.setTransform(d, 0, 0, d, 0, 0);
+    for (const r of this.rockets){
+      if (r.delay > 0) continue;
+      g.fillStyle = r.color; g.beginPath(); g.arc(r.x, r.y, 3.5, 0, TAU); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.6)'; g.fillRect(r.x - 1, r.y + 4, 2, 16);
+    }
+    // firework sparks
+    for (const p of this.sparks){
+      g.globalAlpha = 1 - p.life / p.max; g.fillStyle = p.color;
+      if (p.star){ starPath(g, p.x, p.y, 6, 2.2, 4, p.rot); g.fill(); }
+      else { g.beginPath(); g.arc(p.x, p.y, 3, 0, TAU); g.fill(); }
+    }
+    g.globalAlpha = 1;
+    // confetti rain
+    for (const c of this.conf){
+      g.setTransform(d, 0, 0, d, c.x * d, c.y * d); g.rotate(c.rot); g.scale(1, Math.cos(time * 6 + c.ph));
+      g.fillStyle = c.color;
+      if (c.heart){ heartPath(g, 0, 0, c.w * .8); g.fill(); } else g.fillRect(-c.w / 2, -c.h / 2, c.w, c.h);
+    }
+    g.setTransform(1, 0, 0, 1, 0, 0);
+  },
+};
+
+/* =====================================================================
    GAME FLOW
    ===================================================================== */
 function drawNext(){ const c = $('nextCv'); paintIcon(c, nextLv, 46, 2 + (CFG.DROPPABLE - 1 - nextLv) * 3); }
@@ -690,6 +1083,7 @@ function startGame(){
   Sound.init();
   bodies = []; parts = []; floats = []; confetti = []; comboText = null;
   score = 0; highest = 0; drops = 0; dangerT = 0; comboCount = 0; comboTimer = 0;
+  won = false; winPending = false; gameId++; Party.stop();
   curLv = randLevel(); nextLv = randLevel(); canDrop = true; cooldown = 0; heldT = 0; dropX = CFG.JAR_W / 2;
   $('score').textContent = '0'; $('best').textContent = best;
   drawNext(); updateChain();
@@ -714,19 +1108,51 @@ function gameOver(){
   const isNew = score > 0 && score >= best;
   store.set('unicornMerge.best', best);
   $('goScore').textContent = score; $('goBest').textContent = best;
-  $('goHigh').textContent = CHAIN[highest].name;
-  paintIcon($('goHighCv'), highest, 44);
+  // show the latest (highest) unicorn the player raised in the message
+  const hd = CHAIN[highest];
+  paintIcon($('goHighCv'), highest, 120);
+  if (highest >= 3){
+    $('goMsg').innerHTML = `Your latest unicorn: <b>${hd.name}</b> 🦄`;
+    const left = LAST - highest;
+    $('goSub').textContent = won ? 'You raised an Amazing Unicorn this game. What a star!'
+      : left === 1 ? 'Just one more step to the Amazing Unicorn!'
+      : `Only ${left} more steps to the Amazing Unicorn!`;
+  } else {
+    $('goMsg').innerHTML = `You made a <b>${hd.name}</b>!`;
+    $('goSub').textContent = 'Keep merging to hatch your very own baby unicorn!';
+  }
   $('newBest').hidden = !isNew;
   setTimeout(() => { if (state === 'over') showOverlay('overScreen'); }, 650);
 }
 
 function setPaused(p){
   if (p && state === 'playing'){ state = 'paused'; showOverlay('pauseScreen'); }
-  else if (!p && state === 'paused'){ state = 'playing'; showOverlay(null); lastT = performance.now(); }
+  else if (!p && state === 'paused'){
+    state = 'playing'; showOverlay(null); lastT = performance.now();
+    if (winPending) showWin();
+  }
+}
+
+/* The big "You Win!" party */
+function showWin(){
+  if (state === 'paused'){ winPending = true; return; }
+  if (state !== 'playing') return;
+  winPending = false;
+  state = 'won';
+  $('winScore').textContent = score; $('winBest').textContent = best;
+  showOverlay('winScreen');
+  Sound.fanfare();
+  Party.start(7);
+}
+function keepPlaying(){
+  if (state !== 'won') return;
+  Party.stop(false);
+  state = 'playing'; showOverlay(null); lastT = performance.now();
+  dangerT = 0; canDrop = false; cooldown = CFG.COOLDOWN;
 }
 
 function showOverlay(id){
-  ['startScreen', 'pauseScreen', 'overScreen'].forEach(o => $(o).classList.toggle('show', o === id));
+  ['startScreen', 'pauseScreen', 'overScreen', 'winScreen'].forEach(o => $(o).classList.toggle('show', o === id));
 }
 
 /* Demo jar for the start screen, so the first view isn't empty */
@@ -1006,6 +1432,7 @@ function frame(now){
   }
   if (state !== 'paused') updateFx(dt);
   render();
+  Party.tick(dt);
   requestAnimationFrame(frame);
 }
 
@@ -1038,6 +1465,7 @@ window.addEventListener('keydown', e => {
     if (state === 'playing') tryDrop();
     else if (state === 'start' || state === 'over') startGame();
     else if (state === 'paused') setPaused(false);
+    else if (state === 'won') keepPlaying();
   }
   else if (k === 'Escape' || k === 'p' || k === 'P') setPaused(state === 'playing');
   else if (k === 'm' || k === 'M') toggleMute();
@@ -1061,8 +1489,10 @@ $('playBtn').addEventListener('click', startGame);
 $('againBtn').addEventListener('click', startGame);
 $('resumeBtn').addEventListener('click', () => setPaused(false));
 $('restartBtn').addEventListener('click', startGame);
+$('keepBtn').addEventListener('click', keepPlaying);
+$('winNewBtn').addEventListener('click', startGame);
 document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });
-window.addEventListener('resize', () => { resize(); paintChain(); });
+window.addEventListener('resize', () => { resize(); paintChain(); Party.resize(); });
 
 /* =====================================================================
    BOOT
@@ -1075,13 +1505,20 @@ window.addEventListener('resize', () => { resize(); paintChain(); });
   const halo = ug.createRadialGradient(0, 0, 10, 0, 0, 74);
   halo.addColorStop(0, 'rgba(255,255,255,.95)'); halo.addColorStop(1, 'rgba(255,255,255,0)');
   ug.fillStyle = halo; ug.beginPath(); ug.arc(0, 0, 74, 0, TAU); ug.fill();
-  drawUnicorn(ug, 70);
+  drawUnicorn(ug, 70, CHAIN[8].uni);
   ug.fillStyle = '#FFD36E'; starPath(ug, 52, -48, 9, 3, 4, 0); ug.fill();
   ug.fillStyle = '#FF8CC6'; heartPath(ug, -56, 52, 7); ug.fill();
   ug.fillStyle = '#C9A7FF'; starPath(ug, 58, 40, 6, 2, 4, .3); ug.fill();
 
+  // win-screen dancing Amazing Unicorn
+  const wa = $('winArt');
+  wa.width = wa.height = 170 * dpr;
+  const wg = wa.getContext('2d'); wg.setTransform(dpr, 0, 0, dpr, 85 * dpr, 88 * dpr);
+  drawUnicorn(wg, 96, CHAIN[LAST].uni);
+
   $('best').textContent = best;
-  $('startBest').textContent = best > 0 ? `Your best: ${best}` : 'Can you make a Unicorn?';
+  $('startBest').textContent = best > 0 ? `Your best: ${best}` : 'Can you raise an Amazing Unicorn?';
+  Party.resize();
   renderMute();
   buildChains();
   resize();
