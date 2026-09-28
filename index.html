@@ -206,6 +206,29 @@
   .chip { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
   .game-row.off .g-emoji, .game-row.off .g-name { opacity: .45; }
 
+  .head-btns { display: flex; gap: 8px; align-items: center; }
+  .sheet button.info-btn {
+    width: 40px; padding: 0; border-radius: 50%;
+    font-weight: 800; font-style: italic; font-family: Georgia, serif; font-size: 1.2rem;
+  }
+
+  .stats-wrap { overflow-x: auto; margin: 0 -4px; }
+  .stats { width: 100%; border-collapse: collapse; font-size: .95rem; }
+  .stats th, .stats td { padding: 8px 6px; text-align: right; white-space: nowrap; }
+  .stats th:first-child, .stats td:first-child { text-align: left; white-space: normal; }
+  .stats th { color: var(--muted); font-size: .8rem; border-bottom: 2px solid var(--line); }
+  .stats tbody tr + tr td { border-top: 1px solid var(--line); }
+  .stats td { font-variant-numeric: tabular-nums; }
+  .stats .empty td { text-align: center; color: var(--muted); }
+  .recent-title { margin-top: 18px !important; }
+  .recent { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; font-size: .95rem; }
+  .recent li { display: flex; gap: 10px; justify-content: space-between; color: var(--muted); }
+  .recent li b { color: var(--ink); }
+  .stats-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px !important; }
+
+  .steps { margin: 0 0 12px; padding-left: 1.4em; line-height: 1.55; display: grid; gap: 6px; }
+  .checks { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; line-height: 1.4; }
+
   /* ---------- Promoted game tile ---------- */
   .grid { grid-auto-flow: dense; }
   .tile.promoted {
@@ -297,7 +320,10 @@
   <div class="sheet wide">
     <div class="sheet-head">
       <h2 id="panelTitle">Parental controls</h2>
-      <button class="primary" data-close>Done</button>
+      <div class="head-btns">
+        <button type="button" class="info-btn" id="infoBtn" aria-label="How to install and use offline" title="Install &amp; offline help">i</button>
+        <button class="primary" data-close>Done</button>
+      </div>
     </div>
 
     <section>
@@ -326,6 +352,68 @@
       <h3>Games</h3>
       <p>Hidden games don't appear on the screen. Promoted games get a ribbon, sparkles and animation, and appear first.</p>
       <ul class="game-list" id="gameList"></ul>
+    </section>
+
+    <section>
+      <h3>Activity</h3>
+      <p>What was played and for how long. Saved on this device only.</p>
+      <div class="stats-wrap">
+        <table class="stats">
+          <thead><tr><th>Game</th><th>Plays</th><th>Today</th><th>7 days</th><th>Total</th></tr></thead>
+          <tbody id="statsBody"></tbody>
+        </table>
+      </div>
+      <h3 class="recent-title">Recent sessions</h3>
+      <ul class="recent" id="recentList"></ul>
+      <p class="stats-actions">
+        <button type="button" id="exportStats">Download CSV</button>
+        <button type="button" class="danger" id="clearStats">Clear history</button>
+      </p>
+    </section>
+  </div>
+</div>
+
+<div class="modal" id="info" hidden role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+  <div class="sheet wide">
+    <div class="sheet-head">
+      <h2 id="infoTitle">Install &amp; offline</h2>
+      <button class="primary" data-close>Close</button>
+    </div>
+
+    <section>
+      <h3>This device right now</h3>
+      <ul class="checks" id="checks"></ul>
+    </section>
+
+    <section>
+      <h3>📱 iPhone / iPad</h3>
+      <ol class="steps">
+        <li>Open this page in <b>Safari</b> (not Chrome or an in-app browser).</li>
+        <li>Wait until the dot next to the title turns <b>green</b> and says “available offline”.</li>
+        <li>Tap the <b>Share</b> button (square with an arrow up), scroll down and tap <b>Add to Home Screen</b>, then <b>Add</b>.</li>
+        <li>Open the app from the new icon <b>once while connected to the internet</b>.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h3>🤖 Android</h3>
+      <ol class="steps">
+        <li>Open this page in <b>Chrome</b>.</li>
+        <li>Wait for the green dot (“available offline”).</li>
+        <li>Tap the <b>⋮</b> menu and choose <b>Install app</b> or <b>Add to Home screen</b>.</li>
+        <li>Open the app from the new icon once while online.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h3>✅ Make sure it works offline</h3>
+      <ol class="steps">
+        <li>With internet on, open the app from the home-screen icon and wait for the <b>green dot</b>.</li>
+        <li>Open <b>each game once</b> so everything it needs is saved.</li>
+        <li>Turn on <b>Airplane mode</b>, close the app fully (swipe it away) and open it again from the icon.</li>
+        <li>Open a game. If it plays, you're all set.</li>
+      </ol>
+      <p>After new games are added, open the app with internet and tap ↻ so they're saved too. If the phone hasn't opened the app for a few weeks, it may clear saved files; just open it once online again.</p>
     </section>
   </div>
 </div>
@@ -359,6 +447,40 @@
   }
   function savePrefs() {
     try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch {}
+  }
+
+  // ---------- Activity: which game was played and for how long ----------
+  // Every time a game is opened a session { g: id, t: start time, ms: time on screen }
+  // is added. Only time with the game visible counts, same as the daily limit.
+  const STATS_KEY = 'games-hub-stats';
+  const MAX_SESSIONS = 5000;
+  const stats = loadStats();
+  let session = null;
+
+  function loadStats() {
+    try {
+      const s = JSON.parse(localStorage.getItem(STATS_KEY));
+      if (s && Array.isArray(s.sessions)) return s;
+    } catch {}
+    return { sessions: [] };
+  }
+  function saveStats() {
+    try { localStorage.setItem(STATS_KEY, JSON.stringify(stats)); } catch {}
+  }
+
+  function startSession(id) {
+    if (session && session.g === id) return;   // same game re-routed, keep counting
+    endSession();
+    session = { g: id, t: Date.now(), ms: 0 };
+    stats.sessions.push(session);
+    if (stats.sessions.length > MAX_SESSIONS) stats.sessions.splice(0, stats.sessions.length - MAX_SESSIONS);
+    saveStats();
+  }
+  function endSession() {
+    if (!session) return;
+    if (session.ms < 1000) stats.sessions.splice(stats.sessions.indexOf(session), 1);  // opened by mistake
+    session = null;
+    saveStats();
   }
 
   const isHidden = id => prefs.hidden.includes(id);
@@ -475,9 +597,11 @@
     player.hidden = false;
     document.body.style.overflow = 'hidden';
     frame.focus();
+    startSession(g.id);
   }
 
   function closeGame() {
+    endSession();
     player.hidden = true;
     frame.src = 'about:blank';   // stops sounds and timers of the game
     document.body.style.overflow = '';
@@ -524,7 +648,11 @@
     const now = Date.now();
     const playing = !player.hidden && document.visibilityState === 'visible';
     usedMs(); // rolls the counter over at midnight
-    if (playing) prefs.usage.ms += Math.min(now - lastTick, 5000);
+    if (playing) {
+      const step = Math.min(now - lastTick, 5000);
+      prefs.usage.ms += step;
+      if (session) { session.ms += step; saveStats(); }
+    }
     lastTick = now;
     savePrefs();
 
@@ -554,10 +682,10 @@
   const rand = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
 
   function newProblem() {
-    const a = rand(13, 29), b = rand(6, 9), c = rand(11, 49);
-    const plus = Math.random() < .5;
-    problemEl.textContent = `${a} × ${b} ${plus ? '+' : '−'} ${c} = ?`;
-    answer = plus ? a * b + c : a * b - c;
+    // Easy for a grown-up to do in their head, still out of reach for a young child.
+    const a = rand(11, 19), b = rand(3, 6), c = rand(2, 9);
+    problemEl.textContent = `${a} × ${b} + ${c} = ?`;
+    answer = a * b + c;
     answerEl.value = '';
   }
 
@@ -590,7 +718,9 @@
     tick();
   }));
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') document.querySelectorAll('.modal:not([hidden]) [data-close]').forEach(b => b.click());
+    if (e.key !== 'Escape') return;
+    const open = [...document.querySelectorAll('.modal:not([hidden])')].pop();   // topmost only
+    if (open) open.querySelector('[data-close]').click();
   });
 
   // ---------- Parent panel ----------
@@ -605,6 +735,7 @@
   function openPanel() {
     dailyMinEl.value = prefs.dailyMin;
     renderGameList();
+    renderStats();
     updatePanelStatus();
     panel.hidden = false;
   }
@@ -702,6 +833,129 @@
       gameList.appendChild(li);
     });
   }
+
+  // ---------- Activity report ----------
+  const statsBody = document.getElementById('statsBody');
+  const recentList = document.getElementById('recentList');
+  const DAY = 86400000;
+
+  const gameById = id => games.find(g => g.id === id) || { id, title: id };
+  const titleOf = id => { const g = gameById(id); return `${g.emoji || '🎮'} ${g.title || id}`; };
+
+  function dur(ms) {
+    const sec = Math.round(ms / 1000);
+    if (sec < 60) return sec ? `${sec}s` : '–';
+    const min = Math.round(sec / 60);
+    return min < 60 ? `${min}m` : `${Math.floor(min / 60)}h ${min % 60}m`;
+  }
+  function when(ts) {
+    const d = new Date(ts);
+    const t = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const dayStart = new Date().setHours(0, 0, 0, 0);
+    if (ts >= dayStart) return `Today ${t}`;
+    if (ts >= dayStart - DAY) return `Yesterday ${t}`;
+    return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${t}`;
+  }
+
+  function renderStats() {
+    const dayStart = new Date().setHours(0, 0, 0, 0);
+    const weekStart = dayStart - 6 * DAY;
+    const byGame = new Map();
+    for (const s of stats.sessions) {
+      const r = byGame.get(s.g) || { plays: 0, today: 0, week: 0, total: 0 };
+      r.plays++;
+      r.total += s.ms;
+      if (s.t >= dayStart) r.today += s.ms;
+      if (s.t >= weekStart) r.week += s.ms;
+      byGame.set(s.g, r);
+    }
+    statsBody.innerHTML = '';
+    if (!byGame.size) {
+      statsBody.innerHTML = '<tr class="empty"><td colspan="5">No games played yet.</td></tr>';
+    }
+    [...byGame].sort((a, b) => b[1].total - a[1].total).forEach(([id, r]) => {
+      const tr = document.createElement('tr');
+      [titleOf(id), r.plays, dur(r.today), dur(r.week), dur(r.total)].forEach(v => {
+        const td = document.createElement('td');
+        td.textContent = v;
+        tr.appendChild(td);
+      });
+      statsBody.appendChild(tr);
+    });
+
+    recentList.innerHTML = '';
+    const recent = stats.sessions.slice(-10).reverse();
+    if (!recent.length) recentList.innerHTML = '<li>Nothing yet.</li>';
+    recent.forEach(s => {
+      const li = document.createElement('li');
+      li.innerHTML = '<span><b></b></span><span></span>';
+      li.querySelector('b').textContent = `${titleOf(s.g)} · ${dur(s.ms)}`;
+      li.lastChild.textContent = when(s.t);
+      recentList.appendChild(li);
+    });
+  }
+
+  document.getElementById('exportStats').addEventListener('click', async () => {
+    const pad = n => String(n).padStart(2, '0');
+    const local = ts => { const d = new Date(ts); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+    const esc = v => `"${String(v).replace(/"/g, '""')}"`;
+    const rows = [['game_id', 'game', 'started', 'minutes']]
+      .concat(stats.sessions.map(s => [s.g, gameById(s.g).title || s.g, local(s.t), (s.ms / 60000).toFixed(1)]));
+    const csv = rows.map(r => r.map(esc).join(',')).join('\n');
+    const name = `games-activity-${today()}.csv`;
+    const file = new File([csv], name, { type: 'text/csv' });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Games activity' }); return; }
+    } catch (e) { if (e.name === 'AbortError') return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  });
+
+  document.getElementById('clearStats').addEventListener('click', () => {
+    if (!confirm('Delete all activity history on this device?')) return;
+    stats.sessions = session ? [session] : [];
+    saveStats();
+    renderStats();
+  });
+
+  // ---------- Install & offline help ----------
+  const info = document.getElementById('info');
+  const checksEl = document.getElementById('checks');
+
+  async function renderChecks() {
+    const installed = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    const sw = 'serviceWorker' in navigator && !!navigator.serviceWorker.controller;
+    const ready = statusBox.classList.contains('ready');
+    const items = [
+      [installed, installed ? 'Opened from the home-screen icon.' : 'Opened in the browser. Add it to the home screen (steps below).'],
+      [sw, sw ? 'Offline helper is running.' : 'Offline helper is not active yet. Close and reopen the app once while online.'],
+      [ready, ready ? statusText.textContent + '.' : `Games not fully saved: ${statusText.textContent}`],
+      [navigator.onLine, navigator.onLine ? 'Connected to the internet.' : 'No internet right now (saved games still work).'],
+    ];
+    if (navigator.storage && navigator.storage.persisted) {
+      const kept = await navigator.storage.persisted().catch(() => false);
+      items.push([kept, kept ? 'Saved files are protected from automatic cleanup.' : 'The phone may clear saved files if the app is unused for weeks.']);
+    }
+    checksEl.innerHTML = '';
+    items.forEach(([ok, text]) => {
+      const li = document.createElement('li');
+      li.textContent = `${ok ? '✅' : '⚠️'} ${text}`;
+      checksEl.appendChild(li);
+    });
+  }
+
+  document.getElementById('infoBtn').addEventListener('click', () => {
+    renderChecks();
+    info.hidden = false;
+  });
+
+  // Ask the browser to keep our offline files (granted automatically on many installed apps).
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
   document.addEventListener('visibilitychange', () => { lastTick = Date.now(); });
   setInterval(tick, 1000);

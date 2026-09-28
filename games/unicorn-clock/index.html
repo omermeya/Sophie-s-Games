@@ -205,14 +205,12 @@
   .ans:nth-child(2){ --edge:#A9E5CF; background:linear-gradient(180deg,#fff,#E6FBF2); }
   .ans:nth-child(3){ --edge:#AFD8F3; background:linear-gradient(180deg,#fff,#E7F4FF); }
   .ans .spk{ width:.5em; height:.5em; opacity:.35; flex:0 0 auto; }
-  .ans.sel{ transform:translateY(-6px) scale(1.07); border-color:var(--gold); box-shadow:0 7px 0 var(--gold-d), 0 0 0 6px rgba(255,211,92,.35), 0 16px 30px rgba(232,169,43,.3); }
   .ans .ok{
     position:absolute; top:-26px; right:-18px; width:66px; height:66px; border-radius:50%;
     background:var(--mint-d); border:4px solid #fff; display:grid; place-items:center;
     box-shadow:0 4px 12px rgba(63,191,143,.45); transform:scale(0); transition:transform .3s cubic-bezier(.34,1.8,.5,1);
   }
   .ans .ok svg{ width:36px; height:36px; }
-  .ans.sel .ok{ transform:scale(1); animation:okBounce 1.2s ease-in-out .3s infinite; }
   @keyframes okBounce{ 0%,100%{ transform:scale(1);} 50%{ transform:scale(1.15);} }
   .ans.right{ background:linear-gradient(180deg,#C9FFE9,#8FF0C8); border-color:#fff; transform:scale(1.1); }
   .ans.right .ok{ transform:scale(0); animation:none; }
@@ -1262,9 +1260,7 @@ const Confetti = {
    GAME FLOW
    ===================================================================== */
 let question = null;   // { time, options: [time, ...], correct: index }
-let selected = -1;     // index of the button tapped once
 let busy = false;      // true while feedback is playing
-let tapHints = 0;      // "tap again to choose" is spoken the first few times
 
 const PRAISE = ['Yes!', 'Great job!', 'Super!', 'You got it!', 'Wonderful!', 'Hooray!', 'Amazing!', 'Well done!'];
 
@@ -1299,7 +1295,7 @@ function startPlay(){
 }
 
 function newQuestion(){
-  busy = false; selected = -1;
+  busy = false;
   $('clock').classList.remove('hint');
   const time = pickTime();
   lastTime = time;
@@ -1315,19 +1311,12 @@ function newQuestion(){
 function onAnswerTap(i){
   if (busy || !question) return;
   Sound.unlock();
-  if (selected === i){ choose(i); return; }   // second tap = choose
-  selected = i;
-  document.querySelectorAll('.ans').forEach((b, k) => b.classList.toggle('sel', k === i));
-  Sound.select();
-  const t = question.options[i];
-  Voice.say(spoken(t) + (tapHints < 3 ? '. Tap again to choose!' : ''));
-  tapHints++;
+  choose(i);   // one tap = choose
 }
 
 function choose(i){
-  busy = true; selected = -1;
+  busy = true;
   const btns = [...document.querySelectorAll('.ans')];
-  btns.forEach(b => b.classList.remove('sel'));
   if (i === question.correct) onCorrect(btns[i]); else onWrong(btns[i], btns[question.correct]);
 }
 
