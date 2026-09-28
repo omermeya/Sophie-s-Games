@@ -157,7 +157,9 @@ When you build a new game, add this paragraph to your request:
 
 ## Part F: Parental controls
 
-The header has a **🔒 Parents** button. To get in, you need to solve a math problem (multiplication plus addition or subtraction, e.g. `17 × 8 − 45`). Every wrong answer brings up a new problem.
+The header has a **🔒 Parents** button. To get in, you need to solve a math problem (a two-digit number times a small number, plus a single digit, e.g. `14 × 4 + 7`). Every wrong answer brings up a new problem.
+
+The **i** button at the top of the parents screen explains how to put the app on your phone's home screen and how to check that it works offline. It also shows whether this device is ready right now.
 
 **Play time**
 - **No limit**: play as much as you like.
@@ -170,6 +172,11 @@ When time runs out, the game closes and a "Game time is over" screen appears. Ki
 **Games**
 - **Shown**: uncheck to hide a game from the screen.
 - **⭐ Promoted**: the game appears first and bigger, with a "Featured!" ribbon, sparkles and animation.
+
+**Activity**
+- Shows each game's number of plays and play time for today, the last 7 days and in total, plus the 10 most recent sessions. Only time with the game on screen counts.
+- **Download CSV** saves the full history (one row per session) to open in Excel, Numbers or Google Sheets.
+- **Clear history** deletes it.
 
 > Settings are saved on the device itself, so set them on the iPad the kids play on. A new game added to `games.json` is shown automatically.
 
