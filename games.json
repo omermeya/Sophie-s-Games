@@ -17,6 +17,12 @@
       "title": "Unicorn Clock",
       "emoji": "🕐",
       "color": "#D9C8FF"
+    },
+    {
+      "id": "feed-the-unicorn",
+      "title": "Feed the Unicorn",
+      "emoji": "🧁",
+      "color": "#C9F5E3"
     }
   ]
 }
