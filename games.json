@@ -23,6 +23,12 @@
       "title": "Feed the Unicorn",
       "emoji": "🧁",
       "color": "#C9F5E3"
+    },
+    {
+      "id": "teddy-abc",
+      "title": "Teddy ABC",
+      "emoji": "🧸",
+      "color": "#FFD9B8"
     }
   ]
 }
