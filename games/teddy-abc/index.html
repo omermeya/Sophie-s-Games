@@ -15,12 +15,14 @@
 
   Every letter has 5 short stages, and each finished stage adds a piece to
   that letter's teddy (body, head, ears, outfit, accessory):
-    1. Meet the letter  - it draws itself, says its name and sound, tap pictures
+    1. Meet the letter  - it draws itself, says its name and sound, tap every picture
     2. Trace with guides - dotted path, numbered start dots, moving arrow
     3. Trace with only the start dot
-    4. Draw it from memory (no guides)
+    4. Draw it from memory (no guides; if it's not close, try again with a peek)
     5. Find the letter / find the picture that starts with it
   Finishing all 5 completes one of 26 collectible teddies (Teddy Shelf).
+  After every 3 finished letters comes a surprise test mixing the last 3 letters;
+  finishing it wins a special Pink Teddy (shown on top of the shelf).
   Uppercase first; lowercase opens after all uppercase letters are done
   (finishing a lowercase letter gives its teddy a gold star).
 
@@ -39,7 +41,7 @@
     SOUND/MUSIC ... Web Audio blips, chimes and the soft background tune
     VOICE ......... speechSynthesis wrapper
     INK ........... pointer-event drawing canvas (pencil + finger, palm rejection)
-    STAGES ........ meet / trace / free draw / find
+    STAGES ........ meet / trace / free draw / find / surprise test
     SCREENS ....... home, shelf, grown-ups area
 -->
 <style>
@@ -251,6 +253,16 @@
   }
   .slot .tag svg{ width:100%; height:100%; }
   .slot .gstar{ position:absolute; top:2px; right:6px; width:30%; z-index:2; }
+  /* Pink Teddies won in surprise tests */
+  .pinks{
+    max-width:1100px; margin:0 auto 18px; padding:10px 18px; border-radius:30px;
+    background:linear-gradient(#FFE3F0,#FFC9E1); box-shadow:inset 0 0 0 6px #FF9CC8, 0 10px 24px rgba(91,74,107,.12);
+    display:flex; flex-wrap:wrap; justify-content:center; gap:6px;
+  }
+  .pinks button{ width:clamp(64px, 11vmin, 100px); }
+  .pinks .teddy{ width:100%; height:auto; }
+  .quiz-intro{ width:min(50vmin, 360px); }
+  .quiz-intro svg{ width:100%; height:auto; }
 
   /* grown-ups area */
   #parent{ background:rgba(250,246,255,.98); z-index:70; }
@@ -310,7 +322,7 @@
       <div class="grow"></div>
       <button class="btn mint" id="shelfPlay" aria-label="Play"><span data-icon="play"></span></button>
     </div>
-    <div class="scroll"><div class="shelves" id="shelves"></div></div>
+    <div class="scroll"><div class="pinks" id="pinks" hidden></div><div class="shelves" id="shelves"></div></div>
   </section>
 
   <section class="screen" id="parent">
@@ -495,6 +507,7 @@ const PICS = {
   yoyo:`<path d="M50 6 Q44 22 50 34" fill="none" stroke-width="2.5"/><circle cx="50" cy="60" r="28" fill="#FF6B6B"/><circle cx="50" cy="60" r="14" fill="#FFD93D"/><circle cx="50" cy="60" r="4" fill="#fff"/><path d="M30 46 A24 24 0 0 1 44 36" fill="none" stroke="#fff" stroke-width="3" opacity=".7"/>`,
   yarn:`<path d="M74 72 Q92 80 84 94" fill="none" stroke="#B983FF" stroke-width="4"/><circle cx="48" cy="52" r="34" fill="#C9A3FF"/><path d="M20 40 Q48 30 74 50 M16 56 Q50 44 80 66 M24 74 Q48 62 70 80 M36 22 Q30 52 44 84 M56 20 Q50 52 64 82" fill="none" stroke="#9D72E8" stroke-width="2.5"/>`,
   zebra:`<path d="M34 20 L28 6 L42 16Z M66 20 L72 6 L58 16Z" fill="#fff"/><path d="M40 16 L44 6 L48 14 L52 4 L56 14 L60 6 L62 18Z" fill="${OL}"/><path d="M30 26 Q50 12 70 26 L68 72 Q50 92 32 72Z" fill="#fff"/><path d="M31 34 L44 38 L31 42Z M69 34 L56 38 L69 42Z M32 52 L42 54 L32 58Z M68 52 L58 54 L68 58Z M46 22 L50 32 L54 22Z" fill="${OL}" stroke="none"/><ellipse cx="50" cy="76" rx="16" ry="11" fill="#C9C2D6"/><circle cx="45" cy="76" r="2" fill="${OL}" stroke="none"/><circle cx="55" cy="76" r="2" fill="${OL}" stroke="none"/>${eyes(41,59,46)}`,
+  heart:`<path d="M50 88 C20 66 8 50 10 34 C12 18 32 12 44 22 Q48 26 50 30 Q52 26 56 22 C68 12 88 18 90 34 C92 50 80 66 50 88Z" fill="#FF5C9E"/><ellipse cx="30" cy="34" rx="5" ry="8" fill="#fff" opacity=".55" stroke="none" transform="rotate(-25 30 34)"/>`,
   zipper:`<rect x="26" y="6" width="20" height="88" rx="4" fill="#7CC4FF"/><rect x="54" y="6" width="20" height="88" rx="4" fill="#7CC4FF"/>${[0,1,2,3,4,5,6].map(i=>`<rect x="${i%2?50:44}" y="${10+i*11}" width="6" height="7" rx="1.5" fill="#E5DDEF" stroke-width="1.5"/>`).join('')}<path d="M38 50 L62 50 L58 66 L42 66Z" fill="#FFD93D"/><rect x="44" y="64" width="12" height="22" rx="5" fill="#FFD93D"/>`
 };
 function picSVG(key){
@@ -533,6 +546,8 @@ const TEDDY = {
   Z:{ name:'Zebra Teddy',       fur:'#FFFFFF', belly:'#F1EEF6', ear:'#5B4A6B', out:['scarf','#FF6B6B'], extra:'zstripes' }
 };
 const GUIDE = { name:'Teddy', fur:'#C68B59', out:['none'], hat:'bowtie' };
+// the special prize teddy from the surprise tests
+const PINK = { name:'Pink Teddy', fur:'#FF9CC8', belly:'#FFE3F0', out:['stripes','#FFFFFF','#FF6FA8'], hat:'bow', extra:'necklace', item:'heart' };
 </script>
 <script>
 'use strict';
@@ -663,7 +678,7 @@ function teddyLayers(t, parts, np){
 }
 // o: { newPart, ghost (faint full silhouette behind), sil (silhouette only), star (gold star), cls }
 function teddySVG(L, parts = 5, o = {}){
-  const t = L === 'guide' ? GUIDE : TEDDY[L];
+  const t = L === 'guide' ? GUIDE : L === 'pink' ? PINK : TEDDY[L];
   const np = o.newPart == null ? -1 : o.newPart;
   let s = `<svg class="teddy ${o.cls || ''}" viewBox="0 -16 120 166" aria-hidden="true">`;
   if (o.sil) return s + `<g filter="url(#sil)" opacity=".8">${teddyLayers(t, 5, -1)}</g></svg>`;
@@ -678,11 +693,15 @@ function teddySVG(L, parts = 5, o = {}){
    ===================================================================== */
 const KEY = 'teddy-abc-v1';
 const S = (() => {
-  const d = { mode:'up', up:{}, lo:{}, focus:{ up:null, lo:null }, music:true, sound:true, loIntro:false };
+  // recent: the last 3 letters finished, since: letters finished since the last surprise test,
+  // pink: how many Pink Teddies were won in surprise tests
+  const d = { mode:'up', up:{}, lo:{}, focus:{ up:null, lo:null }, music:true, sound:true, loIntro:false,
+              recent:{ up:[], lo:[] }, since:{ up:0, lo:0 }, pink:0 };
   let s = null;
   try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { s = null; }
   if (!s || typeof s !== 'object') return d;
-  return Object.assign(d, s, { up:Object.assign({}, s.up), lo:Object.assign({}, s.lo), focus:Object.assign({ up:null, lo:null }, s.focus) });
+  return Object.assign(d, s, { up:Object.assign({}, s.up), lo:Object.assign({}, s.lo), focus:Object.assign({ up:null, lo:null }, s.focus),
+    recent:Object.assign({ up:[], lo:[] }, s.recent), since:Object.assign({ up:0, lo:0 }, s.since), pink:+s.pink || 0 });
 })();
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* keep playing */ } }
 const prog = (m, L) => Math.min(5, +S[m][L] || 0);
@@ -692,6 +711,9 @@ function nextLetter(m){
   if (f && prog(m, f) < 5) return f;
   return ORDER[m].find(L => prog(m, L) < 5) || null;
 }
+// a surprise test of the last 3 letters comes after every 3 finished letters
+const QUIZ_EVERY = 3;
+const quizDue = m => S.since[m] >= QUIZ_EVERY && S.recent[m].length >= 3;
 
 /* =====================================================================
    SOUND (Web Audio) + MUSIC
@@ -787,7 +809,9 @@ const Voice = {
     if (!S.sound || !this.ok){ timer = setTimeout(end, S.sound ? 700 + text.length * 50 : 500); return; }
     try {
       const sy = speechSynthesis;
-      if (sy.speaking || sy.pending) sy.cancel();
+      // Speaking right after cancel() can make Safari say the line twice, so wait a moment.
+      const busy = sy.speaking || sy.pending;
+      if (busy) sy.cancel();
       if (!this.v) this.pick();
       const u = new SpeechSynthesisUtterance(text);
       if (this.v){ u.voice = this.v; u.lang = this.v.lang; } else u.lang = 'en-US';
@@ -796,7 +820,8 @@ const Voice = {
       this.cur = u;                                   // keep a reference (Safari can drop it)
       timer = setTimeout(end, 2500 + text.length * 110); // in case onend never comes
       this.setTalk(true);
-      sy.speak(u);
+      const go = () => { if (tk !== this.tk || fin) return; try { sy.speak(u); } catch (e){ end(); } };
+      if (busy) setTimeout(go, 120); else go();
     } catch (e){ timer = setTimeout(end, 600); }
   },
   stop(){ this.tk++; try { if (this.ok) speechSynthesis.cancel(); } catch (e){} this.setTalk(false); }
@@ -877,9 +902,12 @@ function nearFrac(ink, guides, tol){
   for (const p of ink){ if (guides.some(G => G.some(s => Math.abs(s.x - p.x) < tol && Math.abs(s.y - p.y) < tol && Math.hypot(s.x - p.x, s.y - p.y) < tol))) near++; }
   return ink.length ? near / ink.length : 0;
 }
-const FREE = { tol:11, ptol:9, avg:.66, min:.4, prec:.72 };
+// FREE: a good match, accepted by itself as soon as a line ends.
+// FREE_EASY: the forgiving check used when the child taps "done".
+const FREE = { tol:11, ptol:9, avg:.66, min:.4, prec:.72, lr:2 };
+const FREE_EASY = { tol:12, ptol:10, avg:.62, min:.35, prec:.7, lr:2.2 };
 // free drawing: fit the child's drawing onto the letter's box, then compare shapes both ways
-function freeScore(inkStrokes, guides){
+function freeScore(inkStrokes, guides, T = FREE){
   const all = inkStrokes.flatMap(s => s.pts);
   if (all.length < 3) return { ok:false };
   const box = pts => { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; pts.forEach(p => { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); }); return { x0, y0, w:x1 - x0, h:y1 - y0 }; };
@@ -891,11 +919,11 @@ function freeScore(inkStrokes, guides){
   const ratio = sx / sy; if (ratio > 1.8) sx = sy * 1.8; if (ratio < 1 / 1.8) sx = sy / 1.8;
   const cx = ib.x0 + ib.w / 2, cy = ib.y0 + ib.h / 2, gx = gb.x0 + gb.w / 2, gy = gb.y0 + gb.h / 2;
   const strokes = inkStrokes.map(s => resample(s.pts.map(p => ({ x:gx + (p.x - cx) * sx, y:gy + (p.y - cy) * sy }))));
-  const covs = guides.map(g => { const c = new Array(g.pts.length).fill(false); strokes.forEach(st => cover(g.pts, st, FREE.tol, c)); return c.filter(Boolean).length / c.length; });
+  const covs = guides.map(g => { const c = new Array(g.pts.length).fill(false); strokes.forEach(st => cover(g.pts, st, T.tol, c)); return c.filter(Boolean).length / c.length; });
   const avg = covs.reduce((a, b) => a + b, 0) / covs.length, min = Math.min(...covs);
-  const prec = nearFrac(strokes.flat(), guides.map(g => g.pts), FREE.ptol);
+  const prec = nearFrac(strokes.flat(), guides.map(g => g.pts), T.ptol);
   const lr = strokes.reduce((a, st) => a + inkLen(st), 0) / guides.reduce((a, g) => a + g.len, 0);
-  return { ok: avg >= FREE.avg && min >= FREE.min && prec >= FREE.prec && lr < 2, avg, min, prec, lr };
+  return { ok: avg >= T.avg && min >= T.min && prec >= T.prec && lr < T.lr, avg, min, prec, lr };
 }
 
 /* =====================================================================
@@ -1074,7 +1102,8 @@ function letterBoard(el, m, L, o){
       const next = () => { if (k >= paths.length){ if (then) then(); return; } B.run(k++, { keep:true, speed:13, then:next }); };
       next();
     },
-    peek(){ ghost.setAttribute('opacity', 1); later(() => ghost.setAttribute('opacity', 0), 2200); },
+    peek(){ if (this.keepGhost) return; ghost.setAttribute('opacity', 1); later(() => { if (!this.keepGhost) ghost.setAttribute('opacity', 0); }, 2200); },
+    showGhost(){ this.keepGhost = true; ghost.setAttribute('opacity', 1); },
     showAll(){ doneEls.forEach(e => { e.style.strokeDasharray = ''; e.setAttribute('opacity', 1); }); ghost.setAttribute('opacity', 0); }
   };
   activeBoard = B;
@@ -1117,7 +1146,7 @@ function w0(L){ return wordOf(startWords(L)[0]); }
 function wordLine(L, w){
   const word = wordOf(w);
   if (w[0] === '*') return `${cap(word)}! ${cap(word)} ends with ${NAMES[L]}.`;
-  return `${cap(word)}! ${SOUND[L]}, ${SOUND[L]}, ${word}!`;
+  return `${cap(word)}! ${SOUND[L]}... ${word}!`;
 }
 function picBtn(w){ return `<button class="pic" data-w="${w}" aria-label="${wordOf(w)}">${picSVG(picKey(w))}</button>`; }
 function bindPics(root, onTap){
@@ -1133,10 +1162,10 @@ function startLetter(m, L, practice){
   show('letter');
   runStage();
 }
-function renderTop(){
-  const { m, L, stage } = sess;
-  $('pips').innerHTML = STAGES.map((_, i) => `<span class="pip ${i < stage ? 'done' : i === stage ? 'now' : ''}"></span>`).join('');
-  $('miniTeddy').innerHTML = teddySVG(L, stage, { ghost:true });
+function renderTop(np){
+  const { L, stage } = sess, total = sess.quiz ? QUIZ_ROUNDS : STAGES.length;
+  $('pips').innerHTML = [...Array(total)].map((_, i) => `<span class="pip ${i < stage ? 'done' : i === stage ? 'now' : ''}"></span>`).join('');
+  $('miniTeddy').innerHTML = teddySVG(sess.quiz ? 'pink' : L, stage, { ghost:true, newPart:np });
 }
 function runStage(){
   newGen(); $('ov').hidden = true;
@@ -1155,16 +1184,19 @@ function stMeet(){
   const reveal = () => { if (next.hidden){ next.hidden = false; next.classList.add('appear'); later(() => { next.classList.remove('appear'); next.classList.add('pulse'); }, 500); } };
   const intro = () => {
     B.animate();
-    Voice.say(m === 'up' ? `This is ${NAMES[L]}. ${NAMES[L]} says ${SOUND[L]}. ${NAMES[L]} is for ${w0(L)}!`
-                         : `This is small ${NAMES[L]}. It says ${SOUND[L]}, like ${w0(L)}!`);
+    Voice.say(`This is ${nm(m, L)}. It says ${SOUND[L]}, like ${w0(L)}!`);
   };
   $('board').addEventListener('click', intro);
-  bindPics($('side'), () => later(reveal, 900));
+  // every picture starts with this letter, so the child taps all of them before moving on
+  const unseen = () => [...$('side').querySelectorAll('.pic:not(.seen)')];
+  bindPics($('side'), () => { if (!unseen().length) later(reveal, 900); });
   next.addEventListener('click', () => { Snd.tap(); stageDone(); });
   sess.replay = intro;
-  sess.hint = n => {
-    if (n === 0){ $('side').querySelectorAll('.pic').forEach(p => { p.classList.remove('wiggle'); void p.offsetWidth; p.classList.add('wiggle'); }); Voice.say('Tap a picture!'); }
-    else { reveal(); Voice.say('Tap the green button!'); }
+  sess.hint = () => {
+    const left = unseen();
+    if (!left.length){ reveal(); Voice.say('Tap the green button!'); return; }
+    left.forEach(p => { p.classList.remove('wiggle'); void p.offsetWidth; p.classList.add('wiggle'); });
+    Voice.say(left.length < WORDS[L].length ? 'Tap the other picture too!' : 'Tap the pictures!');
   };
   later(intro, 400);
 }
@@ -1172,9 +1204,8 @@ function stMeet(){
 // Stages 2 + 3: trace (guided = dots + arrows; otherwise only the start dot)
 function stTrace(guided){
   const { m, L } = sess, N = nm(m, L);
-  stageEl().innerHTML = `<div class="side side-l"></div><div class="board" id="board"></div><div class="side side-l" id="side">${picBtn(startWords(L)[0])}</div>`;
+  stageEl().innerHTML = `<div class="side side-l"></div><div class="board" id="board"></div><div class="side side-l"></div>`;
   const B = letterBoard($('board'), m, L, { ghost:true, dots:guided, nums:guided ? 'all' : 'current' });
-  bindPics($('side'));
   const n = B.samples.length, tol = guided ? 13 : 14;
   const done = new Array(n).fill(false), covered = B.samples.map(s => new Array(s.pts.length).fill(false));
   let cur = 0, misses = 0, finished = false;
@@ -1198,7 +1229,7 @@ function stTrace(guided){
       finished = true; Ink.enabled = false; B.setCurrent(-1); B.stop();
       FX.burst(); Snd.happy();
       $('board').classList.add('bounce');
-      Voice.say(`${N}! ${NAMES[L]} is for ${w0(L)}!`, () => later(stageDone, 500));
+      Voice.say(`Yes! ${cap(N)} is for ${w0(L)}!`, () => later(stageDone, 500));
       return;
     }
     Snd.ding();
@@ -1222,24 +1253,37 @@ function stFree(){
   icons(stageEl());
   const B = letterBoard($('board'), m, L, { ghost:false });
   const ok = $('ok');
-  let finished = false;
-  const success = (great) => {
+  let finished = false, tries = 0;
+  const live = () => Ink.strokes.filter(s => !s.fadeAt);   // ignore lines that are fading away
+  const success = () => {
     if (finished) return; finished = true; Ink.enabled = false;
     FX.burst(); Snd.happy(); ok.hidden = true;
-    if (!great) B.showAll();
-    Voice.say(great ? `Wow! You drew ${N} all by yourself!` : `Great try! Here is ${N}!`, () => later(stageDone, great ? 400 : 1200));
+    Voice.say(B.keepGhost ? `Wow! You drew ${N}!` : `Wow! You drew ${N} all by yourself!`, () => later(stageDone, 400));
+  };
+  // Not close enough yet: no "wrong", just wipe it and try again with a bit more help each time
+  // (a peek at the letter, then the light letter stays on the board to draw over).
+  const tryAgain = () => {
+    tries++; Snd.soft(); ok.hidden = true; ok.classList.remove('pulse');
+    Ink.strokes.forEach(s => Ink.fade(s));
+    if (tries >= 2){ B.showGhost(); Voice.say(`Almost! Let's try again. Draw ${N} on the light letter.`); }
+    else { B.peek(); Voice.say(`Almost! Let's try again. Here is a little peek at ${N}.`); }
   };
   Ink.attach($('board'), VB[m], B.color, () => {
+    if (finished) return;
     if (ok.hidden){ ok.hidden = false; ok.classList.add('appear'); }
-    if (freeScore(Ink.strokes, B.samples).ok) later(() => success(true), 250);
+    if (freeScore(live(), B.samples).ok) later(success, 250);
   });
   $('clr').addEventListener('click', () => { Snd.soft(); Ink.clear(); ok.hidden = true; });
-  ok.addEventListener('click', () => { Snd.tap(); success(freeScore(Ink.strokes, B.samples).ok); });
+  ok.addEventListener('click', () => {
+    if (finished) return;
+    Snd.tap();
+    if (freeScore(live(), B.samples, FREE_EASY).ok) success(); else tryAgain();
+  });
   const intro = () => Voice.say(`Can you draw ${N} all by yourself?`);
   sess.replay = intro;
   sess.hint = n => {
     B.peek(); Voice.say(`Here is a little peek! Draw ${N}.`);
-    if (n >= 1 && Ink.strokes.length){ ok.hidden = false; ok.classList.add('pulse'); }
+    if (n >= 1 && live().length){ ok.hidden = false; ok.classList.add('pulse'); }
   };
   later(intro, 350);
 }
@@ -1269,7 +1313,7 @@ function stFind(){
     const wrong = pickOther([L], 2).map(x => startWords(x)[0]);
     const opts = shuffle([right, ...wrong]);
     stageEl().innerHTML = `<div class="find-wrap"><div class="target">${glyphSVG(m, L, crayonOf(L), 11)}</div><div class="choices">${opts.map(w => `<button class="pic" data-w="${w}" aria-label="${wordOf(w)}">${picSVG(picKey(w))}</button>`).join('')}</div></div>`;
-    const ask = () => Voice.say(`Which one starts with ${N}? ${SOUND[L]}...`);
+    const ask = () => Voice.say(`Which one starts with ${N}?`);
     stageEl().querySelectorAll('.pic').forEach(b => b.addEventListener('click', () => {
       if (busy) return;
       b.classList.remove('wiggle', 'bounce'); void b.offsetWidth;
@@ -1285,14 +1329,89 @@ function stFind(){
   round1();
 }
 
+function raysSVG(color){
+  return `<svg class="rays" viewBox="-50 -50 100 100" aria-hidden="true">${[...Array(12)].map((_, i) => `<path d="M0 0 L${(60 * Math.cos(i * Math.PI / 6 - .12)).toFixed(1)} ${(60 * Math.sin(i * Math.PI / 6 - .12)).toFixed(1)} L${(60 * Math.cos(i * Math.PI / 6 + .12)).toFixed(1)} ${(60 * Math.sin(i * Math.PI / 6 + .12)).toFixed(1)}Z" fill="${color}"/>`).join('')}</svg>`;
+}
+
+/* Surprise test: after every few finished letters, a few quick questions that mix the last
+   3 letters ("find the letter" and "which picture starts with it"). Each right answer adds a
+   piece to the Pink Teddy; finishing wins one for the shelf. No "wrong", just try again. */
+const QUIZ_ROUNDS = 5;
+function startQuiz(m){
+  const letters = S.recent[m].slice(-3);
+  // every letter at least once, and never the same letter twice in a row
+  let qs;
+  do { qs = shuffle([...letters, ...shuffle(letters).slice(0, QUIZ_ROUNDS - letters.length)]); }
+  while (qs.some((L, i) => i && qs[i - 1] === L));
+  const types = shuffle(['letter', 'letter', 'pic', 'pic', rand(2) ? 'letter' : 'pic']);
+  show('letter');
+  sess = { m, L:qs[0], quiz:true, letters, qs, types, stage:0 };
+  renderTop();
+  stageEl().innerHTML = `<div class="quiz-intro appear">${teddySVG('pink', 5, { sil:true })}</div>`;
+  const intro = () => Voice.say("Surprise! It's a teddy test! Get them all, and win a Pink Teddy!", () => later(quizRound, 300));
+  sess.replay = null; sess.hint = null;
+  later(() => { Snd.sparkle(); intro(); }, 350);
+}
+function quizRound(){
+  newGen();
+  const { m, stage, letters } = sess, L = sess.qs[stage], N = nm(m, L);
+  sess.L = L;
+  renderTop(stage > 0 ? stage - 1 : undefined);
+  let busy = false, ask;
+  if (sess.types[stage] === 'letter'){
+    stageEl().innerHTML = `<div class="choices">${shuffle(letters).map(c => `<button class="card" data-l="${c}" aria-label="${c}">${glyphSVG(m, c, '#5B4A6B', 11)}</button>`).join('')}</div>`;
+    ask = () => Voice.say(`Find ${N}!`);
+  } else {
+    const opts = shuffle(letters.map(x => ({ l:x, w:shuffle(startWords(x))[0] })));
+    stageEl().innerHTML = `<div class="find-wrap"><div class="target">${glyphSVG(m, L, crayonOf(L), 11)}</div><div class="choices">${opts.map(o => `<button class="pic" data-l="${o.l}" data-w="${o.w}" aria-label="${wordOf(o.w)}">${picSVG(picKey(o.w))}</button>`).join('')}</div></div>`;
+    ask = () => Voice.say(`Which one starts with ${N}?`);
+  }
+  stageEl().querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    if (busy) return;
+    b.classList.remove('wiggle', 'bounce'); void b.offsetWidth;
+    const w = b.dataset.w ? cap(wordOf(b.dataset.w)) : '';
+    if (b.dataset.l === L){
+      busy = true; b.classList.add(w ? 'seen' : 'yay', 'bounce'); Snd.sparkle();
+      sess.stage++; renderTop(sess.stage - 1); later(() => Snd.pop(), 150);
+      Voice.say(w ? `Yes! ${w} starts with ${N}!` : `Yes! That's ${N}!`, () => later(sess.stage >= QUIZ_ROUNDS ? quizDone : quizRound, 300));
+    } else {
+      b.classList.add('wiggle'); Snd.soft();
+      Voice.say(w ? `${w}! Which one starts with ${N}?` : `That's ${nm(m, b.dataset.l)}. Can you find ${N}?`);
+    }
+  }));
+  sess.replay = ask; sess.hint = ask;
+  later(ask, 350);
+}
+function quizDone(){
+  const { m } = sess;
+  S.pink++; S.since[m] = 0; save();
+  newGen();
+  const ov = $('ov'); ov.hidden = false;
+  $('ovTeddy').innerHTML = raysSVG('#FFD3E6') + teddySVG('pink', 5);
+  $('ovBtns').innerHTML = `<button class="btn go pulse" id="ovGo" aria-label="Next"><span data-icon="play"></span></button><button class="btn mid" id="ovShelf" aria-label="Teddy shelf"><span data-icon="shelf"></span></button>`;
+  icons($('ovBtns'));
+  const teddy = $('ovTeddy').querySelector('svg.teddy');
+  later(() => { FX.burst(180); Snd.happy(); teddy.classList.add('cheer'); Voice.say('Hooray! You did the whole test! You won a special Pink Teddy!'); }, 400);
+  $('ovGo').addEventListener('click', () => { Snd.tap(); ov.hidden = true; afterLetter(m); });
+  $('ovShelf').addEventListener('click', () => { Snd.tap(); show('shelf'); });
+}
+
 // A stage is finished: save, then show the teddy getting its new part
 function stageDone(){
   const { m, L, stage, practice } = sess, n = stage + 1;
-  if (!practice && prog(m, L) < n){ S[m][L] = n; if (n >= 5 && S.focus[m] === L) S.focus[m] = null; save(); }
+  if (!practice && prog(m, L) < n){
+    S[m][L] = n;
+    if (n >= 5){
+      if (S.focus[m] === L) S.focus[m] = null;
+      S.recent[m] = [...S.recent[m].filter(x => x !== L), L].slice(-3);
+      S.since[m]++;
+    }
+    save();
+  }
   newGen();
   const complete = n >= 5, t = TEDDY[L];
   const ov = $('ov'); ov.hidden = false;
-  const rays = complete ? `<svg class="rays" viewBox="-50 -50 100 100" aria-hidden="true">${[...Array(12)].map((_, i) => `<path d="M0 0 L${(60 * Math.cos(i * Math.PI / 6 - .12)).toFixed(1)} ${(60 * Math.sin(i * Math.PI / 6 - .12)).toFixed(1)} L${(60 * Math.cos(i * Math.PI / 6 + .12)).toFixed(1)} ${(60 * Math.sin(i * Math.PI / 6 + .12)).toFixed(1)}Z" fill="#FFE9A8"/>`).join('')}</svg>` : '';
+  const rays = complete ? raysSVG('#FFE9A8') : '';
   $('ovTeddy').innerHTML = rays + teddySVG(L, n, { newPart:n - 1, ghost:true, star:complete && m === 'lo' });
   $('ovBtns').innerHTML = `<button class="btn go pulse" id="ovGo" aria-label="Next"><span data-icon="play"></span></button>` + (complete ? `<button class="btn mid" id="ovShelf" aria-label="Teddy shelf"><span data-icon="shelf"></span></button>` : '');
   icons($('ovBtns'));
@@ -1307,19 +1426,25 @@ function stageDone(){
   $('ovGo').addEventListener('click', () => {
     Snd.tap(); ov.hidden = true;
     if (!complete){ sess.stage = n; runStage(); return; }
-    if (m === 'up' && allDone('up') && !S.loIntro){
-      S.loIntro = true; S.mode = 'lo'; save();
-      Voice.say("You know all the big letters! Now let's learn the little letters!", () => play());
-      return;
-    }
-    play();
+    if (quizDue(m)){ startQuiz(m); return; }
+    afterLetter(m);
   });
   if (complete) $('ovShelf').addEventListener('click', () => { Snd.tap(); show('shelf'); });
+}
+
+function afterLetter(m){
+  if (m === 'up' && allDone('up') && !S.loIntro){
+    S.loIntro = true; S.mode = 'lo'; save();
+    Voice.say("You know all the big letters! Now let's learn the little letters!", () => play());
+    return;
+  }
+  play();
 }
 
 function play(){
   let m = S.mode;
   if (m === 'lo' && !allDone('up') && !S.loOpen) m = S.mode = 'up';
+  if (quizDue(m)){ startQuiz(m); return; }
   const L = nextLetter(m);
   if (L) startLetter(m, L, false);
   else startLetter(m, ORDER[m][rand(26)], true);   // everything done: practice any letter
@@ -1348,6 +1473,12 @@ function renderHome(){
 function wiggleTeddy(svg){ if (!svg) return; svg.classList.remove('wave', 'giggle'); void svg.getBoundingClientRect(); svg.classList.add('wave', 'giggle'); }
 
 function renderShelf(){
+  $('pinks').hidden = !S.pink;
+  $('pinks').innerHTML = [...Array(Math.min(S.pink, 30))].map(() => `<button aria-label="Pink Teddy">${teddySVG('pink', 5)}</button>`).join('');
+  $('pinks').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    wiggleTeddy(b.querySelector('svg.teddy')); Snd.giggle();
+    Voice.say("Hee hee! I'm a Pink Teddy! You won me in a surprise test!");
+  }));
   $('shelves').innerHTML = ABC.map(L => {
     const got = prog('up', L) >= 5, gold = prog('lo', L) >= 5;
     return `<button class="slot" data-l="${L}" aria-label="${got ? TEDDY[L].name : 'Hidden teddy'}">${got ? teddySVG(L, 5, { star:gold }) : teddySVG(L, 5, { sil:true })}<span class="tag">${glyphSVG('up', L, got ? crayonOf(L) : '#B7A9C9', 13)}</span></button>`;
@@ -1356,7 +1487,7 @@ function renderShelf(){
     const L = b.dataset.l, got = prog('up', L) >= 5, svg = b.querySelector('svg.teddy');
     if (got){
       wiggleTeddy(svg); Snd.giggle();
-      Voice.say(`Hee hee! ${NAMES[L]}! I'm ${TEDDY[L].name}! ${NAMES[L]} is for ${w0(L)}!`);
+      Voice.say(`Hee hee! I'm ${TEDDY[L].name}! ${cap(NAMES[L])} is for ${w0(L)}!`);
     } else {
       b.classList.remove('bounce'); void b.offsetWidth; b.classList.add('bounce'); Snd.soft();
       Voice.say(`${NAMES[L]}! Who is hiding here? Let's play to find out!`);
@@ -1371,7 +1502,8 @@ function renderParent(){
   const cur = nextLetter(m);
   $('panel').innerHTML = `
     <h2>Grown-ups</h2>
-    <p>Teddies collected: ${upDone} of 26 · gold stars (lowercase): ${loDone} of 26. Progress is saved on this device.</p>
+    <p>Teddies collected: ${upDone} of 26 · gold stars (lowercase): ${loDone} of 26 · Pink Teddies from surprise tests: ${S.pink}. Progress is saved on this device.</p>
+    <p>After every ${QUIZ_EVERY} finished letters there is a short surprise test mixing the last 3 letters; finishing it wins a Pink Teddy.</p>
     <h3>Letters</h3>
     <div class="row"><button class="pbtn ${m === 'up' ? 'sel' : ''}" data-mode="up">Uppercase ABC</button><button class="pbtn ${m === 'lo' ? 'sel' : ''}" data-mode="lo">Lowercase abc</button></div>
     <p>Lowercase opens by itself after all 26 uppercase letters are finished; you can switch any time here.</p>
@@ -1393,7 +1525,7 @@ function renderParent(){
   $('pReset').addEventListener('click', e => {
     const b = e.currentTarget;
     if (Date.now() - resetArmed < 4000){
-      Object.assign(S, { mode:'up', up:{}, lo:{}, focus:{ up:null, lo:null }, loIntro:false, loOpen:false }); save(); resetArmed = 0;
+      Object.assign(S, { mode:'up', up:{}, lo:{}, focus:{ up:null, lo:null }, loIntro:false, loOpen:false, recent:{ up:[], lo:[] }, since:{ up:0, lo:0 }, pink:0 }); save(); resetArmed = 0;
       b.textContent = 'Progress cleared'; b.classList.remove('armed'); setTimeout(() => { if (screen === 'parent') renderParent(); }, 1200);
     } else { resetArmed = Date.now(); b.textContent = 'Tap again to reset everything'; b.classList.add('armed'); }
   });
