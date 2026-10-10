@@ -548,26 +548,59 @@ const Sound = {
    VOICE: spoken instructions with the built-in speechSynthesis
    (offline on iPad). Silent when muted.
    ===================================================================== */
+// Pick the most natural-sounding English voice on this device. Premium / Enhanced
+// voices (iPad: Settings > Accessibility > Spoken Content > Voices) and Natural /
+// Neural voices (Edge, Chrome) sound far more human than the default ones.
+function bestVoice(){
+  let vs = []; try { vs = speechSynthesis.getVoices() || []; } catch (e){}
+  const novelty = /Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Deranged|Good News|Hysterical|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Fred|Junior|Ralph|Kathy|Grandpa|Grandma|Rocko|Shelley|Reed|Sandy|Eddy|Flo\b/i;
+  const fav = ['Zoe', 'Ava', 'Samantha', 'Allison', 'Susan', 'Aria', 'Jenny', 'Ana', 'Karen', 'Moira', 'Tessa', 'Serena', 'Kate', 'Google US English', 'Google UK English Female'];
+  const online = navigator.onLine !== false;
+  const score = v => {
+    const id = v.name + ' ' + (v.voiceURI || '');
+    let s = 0;
+    if (/premium/i.test(id)) s += 60; else if (/enhanced/i.test(id)) s += 45;
+    if (/natural|neural/i.test(id)) s += 50;
+    if (/compact/i.test(id)) s -= 15;
+    const i = fav.findIndex(n => v.name.includes(n));
+    if (i >= 0) s += 30 - i;
+    if (/en[-_]US/i.test(v.lang)) s += 8; else if (/en[-_](GB|AU|IE|NZ)/i.test(v.lang)) s += 5;
+    if (v.localService === false) s -= online ? 5 : 200;   // online-only voices go silent offline
+    return s;
+  };
+  let best = null, bs = -Infinity;
+  for (const v of vs){
+    if (!/^en([-_]|$)/i.test(v.lang) || novelty.test(v.name)) continue;
+    const s = score(v); if (s > bs){ bs = s; best = v; }
+  }
+  return best;
+}
+// Split a line into sentences and give each its own gentle tone: a little lift for
+// questions, a little sparkle for cheers, and a natural pause between sentences.
+// (A slightly high pitch and a near-normal speed sound warmer than a very high, slow voice.)
+function speechParts(text, rate){
+  const parts = (String(text).match(/[^.!?]+[.!?]*/g) || [String(text)]).map(p => p.trim()).filter(Boolean);
+  return parts.map(p => {
+    const q = /\?$/.test(p), ex = /!$/.test(p);
+    return { text: p, pitch: q ? 1.12 : ex ? 1.1 : 1.05, rate: rate + (ex ? .03 : 0) };
+  });
+}
+function utter(part, voice){
+  const u = new SpeechSynthesisUtterance(part.text);
+  if (voice){ u.voice = voice; u.lang = voice.lang; } else u.lang = 'en-US';
+  u.rate = part.rate; u.pitch = part.pitch; u.volume = 1;
+  return u;
+}
 const Voice = {
   voice: null,
-  choose(){
-    try {
-      const vs = window.speechSynthesis ? speechSynthesis.getVoices() : [];
-      const en = vs.filter(v => /^en[-_]/i.test(v.lang) || v.lang === 'en');
-      this.voice = en.find(v => /samantha|karen|moira|tessa|serena|female/i.test(v.name) && v.localService !== false)
-        || en.find(v => /en[-_]US/i.test(v.lang) && v.localService !== false)
-        || en[0] || null;
-    } catch (e) { this.voice = null; }
-  },
+  choose(){ try { this.voice = bestVoice(); } catch (e) { this.voice = null; } },
   say(text){
     if (state.muted || !('speechSynthesis' in window)) return;
     try {
       speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      if (this.voice) u.voice = this.voice;
-      u.lang = this.voice ? this.voice.lang : 'en-US';
-      u.rate = 0.9; u.pitch = 1.2; u.volume = 1;
-      speechSynthesis.speak(u);
+      if (!this.voice) this.choose();
+      this.cur = speechParts(text, 0.92).map(p => utter(p, this.voice));   // keep references (Safari can drop them)
+      this.cur.forEach(u => speechSynthesis.speak(u));
     } catch (e) {}
   },
   stop(){ try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) {} },
@@ -575,6 +608,8 @@ const Voice = {
 if ('speechSynthesis' in window){
   Voice.choose();
   try { speechSynthesis.addEventListener('voiceschanged', () => Voice.choose()); } catch (e) {}
+  window.addEventListener('online', () => Voice.choose());
+  window.addEventListener('offline', () => Voice.choose());
 }
 
 /* =====================================================================

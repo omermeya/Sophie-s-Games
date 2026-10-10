@@ -783,19 +783,53 @@ const Music = {
 /* =====================================================================
    VOICE (speechSynthesis). Everything still works without it.
    ===================================================================== */
+// Pick the most natural-sounding English voice on this device. Premium / Enhanced
+// voices (iPad: Settings > Accessibility > Spoken Content > Voices) and Natural /
+// Neural voices (Edge, Chrome) sound far more human than the default ones.
+function bestVoice(){
+  let vs = []; try { vs = speechSynthesis.getVoices() || []; } catch (e){}
+  const novelty = /Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Deranged|Good News|Hysterical|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Fred|Junior|Ralph|Kathy|Grandpa|Grandma|Rocko|Shelley|Reed|Sandy|Eddy|Flo\b/i;
+  const fav = ['Zoe', 'Ava', 'Samantha', 'Allison', 'Susan', 'Aria', 'Jenny', 'Ana', 'Karen', 'Moira', 'Tessa', 'Serena', 'Kate', 'Google US English', 'Google UK English Female'];
+  const online = navigator.onLine !== false;
+  const score = v => {
+    const id = v.name + ' ' + (v.voiceURI || '');
+    let s = 0;
+    if (/premium/i.test(id)) s += 60; else if (/enhanced/i.test(id)) s += 45;
+    if (/natural|neural/i.test(id)) s += 50;
+    if (/compact/i.test(id)) s -= 15;
+    const i = fav.findIndex(n => v.name.includes(n));
+    if (i >= 0) s += 30 - i;
+    if (/en[-_]US/i.test(v.lang)) s += 8; else if (/en[-_](GB|AU|IE|NZ)/i.test(v.lang)) s += 5;
+    if (v.localService === false) s -= online ? 5 : 200;   // online-only voices go silent offline
+    return s;
+  };
+  let best = null, bs = -Infinity;
+  for (const v of vs){
+    if (!/^en([-_]|$)/i.test(v.lang) || novelty.test(v.name)) continue;
+    const s = score(v); if (s > bs){ bs = s; best = v; }
+  }
+  return best;
+}
+// Split a line into sentences and give each its own gentle tone: a little lift for
+// questions, a little sparkle for cheers, and a natural pause between sentences.
+// (A slightly high pitch and a near-normal speed sound warmer than a very high, slow voice.)
+function speechParts(text, rate){
+  const parts = (String(text).match(/[^.!?]+[.!?]*/g) || [String(text)]).map(p => p.trim()).filter(Boolean);
+  return parts.map(p => {
+    const q = /\?$/.test(p), ex = /!$/.test(p);
+    return { text: p, pitch: q ? 1.12 : ex ? 1.1 : 1.05, rate: rate + (ex ? .03 : 0) };
+  });
+}
+function utter(part, voice){
+  const u = new SpeechSynthesisUtterance(part.text);
+  if (voice){ u.voice = voice; u.lang = voice.lang; } else u.lang = 'en-US';
+  u.rate = part.rate; u.pitch = part.pitch; u.volume = 1;
+  return u;
+}
 const Voice = {
   ok: 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined',
   v:null, tk:0, talking:false, primed:false, cur:null,
-  pick(){
-    if (!this.ok) return;
-    let vs = []; try { vs = speechSynthesis.getVoices() || []; } catch (e){}
-    const bad = /Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Deranged|Good News|Hysterical|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Fred|Junior|Ralph|Kathy|Grandpa|Grandma|Rocko|Shelley|Reed|Sandy|Eddy|Flo\b/i;
-    const pool = vs.filter(v => /^en([-_]|$)/i.test(v.lang) && !bad.test(v.name));
-    const good = ['Samantha', 'Karen', 'Moira', 'Tessa', 'Serena', 'Kate', 'Ava', 'Allison', 'Susan', 'Daniel', 'Google US English', 'Google UK English Female', 'Aria', 'Jenny', 'Zira'];
-    let best = null;
-    for (const n of good){ best = pool.find(v => v.name.includes(n)); if (best) break; }
-    this.v = best || pool.find(v => /en[-_]US/i.test(v.lang)) || pool.find(v => /en[-_]GB/i.test(v.lang)) || pool[0] || null;
-  },
+  pick(){ if (!this.ok) return; try { this.v = bestVoice(); } catch (e){ this.v = null; } },
   prime(){
     if (this.primed || !this.ok) return; this.primed = true;
     try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch (e){}
@@ -813,20 +847,23 @@ const Voice = {
       const busy = sy.speaking || sy.pending;
       if (busy) sy.cancel();
       if (!this.v) this.pick();
-      const u = new SpeechSynthesisUtterance(text);
-      if (this.v){ u.voice = this.v; u.lang = this.v.lang; } else u.lang = 'en-US';
-      u.rate = .8; u.pitch = 1.1; u.volume = 1;
-      u.onend = end; u.onerror = end;
-      this.cur = u;                                   // keep a reference (Safari can drop it)
-      timer = setTimeout(end, 2500 + text.length * 110); // in case onend never comes
+      // A little slower than the other games: Teddy is teaching letter names and sounds.
+      const us = speechParts(text, .88).map(p => utter(p, this.v));
+      us.forEach(u => { u.onerror = end; });
+      us[us.length - 1].onend = end;
+      this.cur = us;                                  // keep references (Safari can drop them)
+      timer = setTimeout(end, 2500 + us.length * 300 + text.length * 110); // in case onend never comes
       this.setTalk(true);
-      const go = () => { if (tk !== this.tk || fin) return; try { sy.speak(u); } catch (e){ end(); } };
+      const go = () => { if (tk !== this.tk || fin) return; try { us.forEach(u => sy.speak(u)); } catch (e){ end(); } };
       if (busy) setTimeout(go, 120); else go();
     } catch (e){ timer = setTimeout(end, 600); }
   },
   stop(){ this.tk++; try { if (this.ok) speechSynthesis.cancel(); } catch (e){} this.setTalk(false); }
 };
-if (Voice.ok){ Voice.pick(); try { speechSynthesis.addEventListener('voiceschanged', () => Voice.pick()); } catch (e){} }
+if (Voice.ok){
+  Voice.pick(); try { speechSynthesis.addEventListener('voiceschanged', () => Voice.pick()); } catch (e){}
+  window.addEventListener('online', () => Voice.pick()); window.addEventListener('offline', () => Voice.pick());
+}
 
 /* =====================================================================
    TIMERS tied to the current screen/stage (all cancelled on change)
