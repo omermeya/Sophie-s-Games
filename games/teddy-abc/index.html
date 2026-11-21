@@ -26,7 +26,8 @@
   Uppercase first; lowercase opens after all uppercase letters are done
   (finishing a lowercase letter gives its teddy a gold star).
 
-  No reading needed, no timers, no "wrong". Apple Pencil: pressure changes
+  No reading needed, no timers. In "find" and the surprise test a wrong answer
+  starts that part over, so guessing doesn't work. Apple Pencil: pressure changes
   the line thickness, and touches are ignored while the pencil is down.
 
   Everything is in this one file (inline SVG art, Web Audio sounds, the
@@ -1293,6 +1294,7 @@ function stFind(){
   const { m, L } = sess, N = nm(m, L);
   let busy = false;
   const round1 = () => {
+    busy = false;
     const opts = shuffle([L, ...pickOther([L], 2)]);
     stageEl().innerHTML = `<div class="choices">${opts.map(c => `<button class="card" data-l="${c}" aria-label="${c}">${glyphSVG(m, c, '#5B4A6B', 11)}</button>`).join('')}</div>`;
     const ask = () => Voice.say(`Find ${N}!`);
@@ -1302,7 +1304,7 @@ function stFind(){
       if (b.dataset.l === L){
         busy = true; b.classList.add('yay', 'bounce'); Snd.sparkle();
         Voice.say(`Yes! That's ${N}!`, () => later(round2, 300));
-      } else { b.classList.add('wiggle'); Snd.soft(); Voice.say(`That's ${nm(m, b.dataset.l)}. Can you find ${N}?`); }
+      } else { busy = true; b.classList.add('wiggle'); Snd.soft(); Voice.say(`Oops! That's ${nm(m, b.dataset.l)}. Let's start again!`, () => later(round1, 300)); }
     }));
     sess.replay = ask; sess.hint = ask;
     later(ask, 350);
@@ -1321,7 +1323,7 @@ function stFind(){
       if (b.dataset.w === right){
         busy = true; b.classList.add('seen', 'bounce'); Snd.sparkle(); FX.burst(60);
         Voice.say(`Yes! ${cap(w)} starts with ${NAMES[L]}!`, () => later(stageDone, 400));
-      } else { b.classList.add('wiggle'); Snd.soft(); Voice.say(`${cap(w)}! Which one starts with ${N}?`); }
+      } else { busy = true; b.classList.add('wiggle'); Snd.soft(); Voice.say(`Oops! ${cap(w)} doesn't start with ${NAMES[L]}. Let's start again!`, () => later(round1, 300)); }
     }));
     sess.replay = ask; sess.hint = ask;
     later(ask, 350);
@@ -1335,15 +1337,19 @@ function raysSVG(color){
 
 /* Surprise test: after every few finished letters, a few quick questions that mix the last
    3 letters ("find the letter" and "which picture starts with it"). Each right answer adds a
-   piece to the Pink Teddy; finishing wins one for the shelf. No "wrong", just try again. */
+   piece to the Pink Teddy; finishing wins one for the shelf. A wrong answer starts the test over. */
 const QUIZ_ROUNDS = 5;
-function startQuiz(m){
-  const letters = S.recent[m].slice(-3);
+function makeQuiz(letters){
   // every letter at least once, and never the same letter twice in a row
   let qs;
   do { qs = shuffle([...letters, ...shuffle(letters).slice(0, QUIZ_ROUNDS - letters.length)]); }
   while (qs.some((L, i) => i && qs[i - 1] === L));
   const types = shuffle(['letter', 'letter', 'pic', 'pic', rand(2) ? 'letter' : 'pic']);
+  return { qs, types };
+}
+function startQuiz(m){
+  const letters = S.recent[m].slice(-3);
+  const { qs, types } = makeQuiz(letters);
   show('letter');
   sess = { m, L:qs[0], quiz:true, letters, qs, types, stage:0 };
   renderTop();
@@ -1375,8 +1381,12 @@ function quizRound(){
       sess.stage++; renderTop(sess.stage - 1); later(() => Snd.pop(), 150);
       Voice.say(w ? `Yes! ${w} starts with ${N}!` : `Yes! That's ${N}!`, () => later(sess.stage >= QUIZ_ROUNDS ? quizDone : quizRound, 300));
     } else {
-      b.classList.add('wiggle'); Snd.soft();
-      Voice.say(w ? `${w}! Which one starts with ${N}?` : `That's ${nm(m, b.dataset.l)}. Can you find ${N}?`);
+      // No guessing: a wrong answer takes the Pink Teddy apart and the test starts over.
+      busy = true; b.classList.add('wiggle'); Snd.soft();
+      Object.assign(sess, makeQuiz(letters), { stage:0 });
+      renderTop();
+      Voice.say((w ? `Oops! ${w} doesn't start with ${NAMES[L]}.` : `Oops! That's ${nm(m, b.dataset.l)}.`) + " Let's start the test again!",
+        () => later(quizRound, 300));
     }
   }));
   sess.replay = ask; sess.hint = ask;

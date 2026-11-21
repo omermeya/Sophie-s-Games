@@ -15,8 +15,9 @@
   The unicorn is hungry. Each question shows a sum ("3 + 2") as big digits
   AND as little pictures to count. The child drags the magical food with the
   right number into the unicorn's mouth (a simple tap works too).
-  Wrong answers never cost anything: the unicorn shakes its head and the
-  food bounces back. No timers, no reading needed.
+  No guessing: after a wrong answer the unicorn shakes its head, says the
+  right answer, and the rainbow empties so the round starts from the
+  beginning. No timers, no reading needed.
 
   Everything lives in this one file: no images, fonts, or network calls,
   so it works fully offline inside the games hub.
@@ -1050,9 +1051,24 @@ async function feed(el, dx, dy, dropped){
     Sound.boing();
     await returnFood(el, dx, dy);
     playUnicorn.classList.remove('shake');
-    waveItems();
-    Voice.say(pick(['Hmm! Try another one!', "Let's count together!", 'Try a different one!']));
-    game.busy = false;
+    if (!$('play').classList.contains('active')) return;   // child went home meanwhile
+    // No guessing: a wrong answer empties the rainbow and the round starts over.
+    const q = game.q;
+    const bubble = $('answerBubble');
+    if (bubble){ bubble.textContent = q.answer; bubble.classList.add('filled'); }
+    const lost = game.correct > 0;
+    game.correct = 0;
+    setMeter(0);
+    await Promise.all([
+      Voice.say(`Oops! ${spokenQuestion(q).replace('!', '')} is ${word(q.answer)}. ` +
+        (lost ? "Let's start the rainbow again!" : "Let's try a new one!")),
+      wait(2200),
+    ]);
+    if (!$('play').classList.contains('active')) return;
+    $('tray').querySelectorAll('.food').forEach(f => f.classList.add('leave'));
+    await wait(280);
+    if (!$('play').classList.contains('active')) return;
+    nextQuestion();
   }
 }
 
