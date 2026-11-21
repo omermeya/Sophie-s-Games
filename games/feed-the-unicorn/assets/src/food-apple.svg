@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"><defs><radialGradient id="ap" cx=".38" cy=".35" r=".75"><stop offset="0" stop-color="#FF9FBF"/><stop offset=".6" stop-color="#FF6B98"/><stop offset="1" stop-color="#E64C7E"/></radialGradient></defs>
+  <path d="M300 160 C240 110 90 110 70 270 C55 400 140 560 240 560 C270 560 285 545 300 545 C315 545 330 560 360 560 C460 560 545 400 530 270 C510 110 360 110 300 160Z"
+        fill="url(#ap)" stroke="#5A3A7E" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M140 230 Q160 170 220 160" stroke="#fff" stroke-width="24" fill="none" stroke-linecap="round" opacity=".85"/>
+  <circle cx="132" cy="280" r="12" fill="#fff" opacity=".85"/>
+  <path d="M300 170 C300 120 290 80 270 50" stroke="#8A5A3A" stroke-width="22" fill="none" stroke-linecap="round"/>
+  <path d="M310 110 C340 40 430 30 470 60 C440 120 360 140 310 110Z" fill="#8EE6A8" stroke="#5A3A7E" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M330 100 C370 80 410 70 440 68" stroke="#4FBF7A" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <path d="M470,424Q474.68,445.32 496,450Q474.68,454.68 470,476Q465.32,454.68 444,450Q465.32,445.32 470,424Z" fill="#fff"/></svg>

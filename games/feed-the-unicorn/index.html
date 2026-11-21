@@ -19,8 +19,10 @@
   right answer, and the rainbow empties so the round starts from the
   beginning. No timers, no reading needed.
 
-  Everything lives in this one file: no images, fonts, or network calls,
-  so it works fully offline inside the games hub.
+  The unicorn, foods and reward star are pictures in assets/ (see
+  assets/ASSET-BRIEF.md for sizes; editable sources are in assets/src/).
+  Everything else lives in this one file, with no fonts or network calls,
+  so it works offline inside the games hub.
 
   Quick map of the code (search for the "=====" headers):
     CONFIG ........ levels, questions per round, answer choices  ← tweak difficulty here
@@ -130,7 +132,7 @@
     border-radius:26px; background:#fff; display:flex; align-items:center; justify-content:center; gap:2px;
     font-weight:900; font-size:22px; color:var(--gold-d); box-shadow:0 4px 10px rgba(91,63,134,.2);
   }
-  .badge svg{ width:26px; height:26px; }
+  .badge svg, .badge img{ width:26px; height:26px; }
   .badge:empty{ display:none; }
 
   .star-pill{
@@ -138,7 +140,7 @@
     padding:8px 22px 8px 14px; font-weight:900; font-size:clamp(28px,4.6vmin,42px); color:var(--gold-d);
     box-shadow:0 5px 0 #F5E0A8, 0 10px 18px rgba(232,169,43,.2);
   }
-  .star-pill svg{ width:clamp(40px,6vmin,54px); height:clamp(40px,6vmin,54px); }
+  .star-pill svg, .star-pill img{ width:clamp(40px,6vmin,54px); height:clamp(40px,6vmin,54px); }
   .star-pill.bump{ animation:bump .6s cubic-bezier(.34,1.8,.5,1); }
 
   /* ---------- Play screen ---------- */
@@ -215,7 +217,7 @@
   .food .float{ width:100%; height:100%; position:relative; animation:float 2.8s ease-in-out infinite alternate; }
   .food:nth-child(2) .float{ animation-delay:-.9s; }
   .food:nth-child(3) .float{ animation-delay:-1.8s; }
-  .food svg{ width:100%; height:100%; display:block; filter:drop-shadow(0 6px 6px rgba(91,63,134,.18)); }
+  .food img{ width:100%; height:100%; display:block; pointer-events:none; -webkit-user-drag:none; filter:drop-shadow(0 6px 6px rgba(91,63,134,.18)); }
   .food .num{
     position:absolute; transform:translate(-50%,-50%); width:48%; aspect-ratio:1; border-radius:50%;
     background:rgba(255,255,255,.95); border:4px solid #F3E8FF; display:grid; place-items:center;
@@ -242,10 +244,11 @@
   .u-head{ transform-origin:150px 225px; }
   .u-mane{ transform-origin:150px 110px; animation:sway 3.6s ease-in-out infinite alternate; }
   .u-tail{ transform-origin:215px 290px; animation:sway 2.8s ease-in-out infinite alternate-reverse; }
-  .u-eyes{ transform-origin:150px 148px; animation:blink 4.8s infinite; }
+  .u-eyes{ animation:blinkOpen 4.8s infinite; }
+  .u-eyes-closed{ opacity:0; animation:blinkShut 4.8s infinite; }
+  .unicorn.happy .u-eyes-closed{ display:none; }
   .u-eyes-happy, .u-mouth-open, .u-wings{ display:none; }
-  .u-sparkle{ transform-origin:178px 40px; animation:twinkle 2.4s ease-in-out infinite; }
-  .unicorn.aah .u-mouth-open{ display:inline; }
+    .unicorn.aah .u-mouth-open{ display:inline; }
   .unicorn.aah .u-mouth-closed{ display:none; }
   .unicorn.happy .u-eyes{ display:none; }
   .unicorn.happy .u-eyes-happy{ display:inline; }
@@ -260,7 +263,8 @@
 
   @keyframes bob{ from{ transform:translateY(0); } to{ transform:translateY(-6px); } }
   @keyframes sway{ from{ transform:rotate(-2.5deg); } to{ transform:rotate(2.5deg); } }
-  @keyframes blink{ 0%,93%,100%{ transform:scaleY(1); } 96%{ transform:scaleY(.08); } }
+  @keyframes blinkOpen{ 0%,93%,98%,100%{ opacity:1; } 94%,97%{ opacity:0; } }
+  @keyframes blinkShut{ 0%,93%,98%,100%{ opacity:0; } 94%,97%{ opacity:1; } }
   @keyframes twinkle{ 0%,100%{ transform:scale(.4) rotate(0); opacity:.2; } 50%{ transform:scale(1) rotate(45deg); opacity:1; } }
   @keyframes chompA{ 0%{ opacity:1; } 50%{ opacity:0; } }
   @keyframes chompB{ 0%{ opacity:0; } 50%{ opacity:1; } }
@@ -296,7 +300,7 @@
   @keyframes fadeIn{ from{ opacity:0; } }
   .big-star{ width:clamp(150px,26vmin,230px); height:clamp(150px,26vmin,230px); animation:starIn 1s cubic-bezier(.34,1.6,.5,1) both; }
   @keyframes starIn{ 0%{ transform:scale(0) rotate(-180deg); } 100%{ transform:scale(1) rotate(0); } }
-  .big-star svg{ width:100%; height:100%; animation:twinkleBig 2s ease-in-out .9s infinite alternate; }
+  .big-star svg, .big-star img{ width:100%; height:100%; animation:twinkleBig 2s ease-in-out .9s infinite alternate; }
   @keyframes twinkleBig{ to{ transform:scale(1.08) rotate(8deg); } }
   .party-buttons{ display:flex; gap:clamp(24px,5vmin,56px); }
   .big-btn{
@@ -326,7 +330,7 @@
     .home-main{ grid-template-areas:"uni levels" "uni levels"; }
   }
   @media (prefers-reduced-motion: reduce){
-    .u-all, .u-mane, .u-tail, .food .float, .bg-dots i{ animation:none; }
+    .u-all, .u-mane, .u-tail, .u-eyes, .u-eyes-closed, .food .float, .bg-dots i{ animation:none; }
   }
 </style>
 </head>
@@ -415,9 +419,8 @@ const YUMMY_WORDS = ['Yummy!', 'Num num num!', 'Delicious!', 'So tasty!', 'Mmm, 
 
 /* =====================================================================
    FOODS: magical unicorn food. To add a new food, add an entry here:
-     id ....... any unique name
-     num ...... where the number badge sits, in % of the food (x, y)
-     svg ...... a drawing in a 120 x 120 box (keep the badge spot fairly plain)
+     id ....... picture name: assets/food-<id>.png (600 x 600, transparent)
+     num ...... where the number badge sits, in % of the picture (x, y)
    ===================================================================== */
 function starPath(cx, cy, R, r, n = 5, rot = -90){
   let d = '';
@@ -431,66 +434,12 @@ const sparkle4 = (x, y, s, fill) =>
   `<path d="M${x},${y - s}Q${x + s * .18},${y - s * .18} ${x + s},${y}Q${x + s * .18},${y + s * .18} ${x},${y + s}Q${x - s * .18},${y + s * .18} ${x - s},${y}Q${x - s * .18},${y - s * .18} ${x},${y - s}Z" fill="${fill}"/>`;
 
 const FOODS = [
-  { id:'cupcake', num:[50, 74], svg:
-    // rainbow cupcake: striped wrapper, rainbow frosting swirl, cherry
-    `<path d="M22 58 L98 58 L88 114 Q60 120 32 114 Z" fill="#FFB3D9" stroke="#F48FC0" stroke-width="3" stroke-linejoin="round"/>
-     <path d="M36 60 L42 114 M60 60 V116 M84 60 L78 114" stroke="#F79CC8" stroke-width="5" stroke-linecap="round"/>
-     <ellipse cx="60" cy="58" rx="42" ry="11" fill="#A8D8FF"/>
-     <circle cx="34" cy="50" r="15" fill="#A8EED3"/><circle cx="86" cy="50" r="15" fill="#C9B3FF"/>
-     <circle cx="60" cy="44" r="20" fill="#FFE08A"/><circle cx="48" cy="30" r="12" fill="#FFB3D9"/>
-     <circle cx="70" cy="28" r="12" fill="#FF9EC8"/><circle cx="60" cy="18" r="9" fill="#C9B3FF"/>
-     <circle cx="62" cy="7" r="8" fill="#FF5C8A"/><circle cx="59" cy="4" r="2.5" fill="#fff" opacity=".8"/>
-     <path d="M62 0 Q66 -8 72 -9" stroke="#3FBF8F" stroke-width="3" fill="none" stroke-linecap="round"/>
-     <rect x="28" y="40" width="7" height="3" rx="1.5" fill="#fff" transform="rotate(-30 31 41)"/>
-     <rect x="82" y="42" width="7" height="3" rx="1.5" fill="#FF8FB8" transform="rotate(25 85 43)"/>
-     <rect x="64" y="38" width="7" height="3" rx="1.5" fill="#7AC7F5" transform="rotate(60 67 39)"/>` },
-
-  { id:'star-cookie', num:[50, 54], svg:
-    // golden star cookie with candy dots on each point
-    `<path d="${starPath(60, 64, 60, 32)}" fill="#F6C77A" stroke="#E0A04E" stroke-width="5" stroke-linejoin="round"/>
-     <path d="${starPath(60, 64, 48, 26)}" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round" opacity=".9"/>
-     <circle cx="60" cy="16" r="5" fill="#FF8FB8"/><circle cx="105" cy="49" r="5" fill="#8EE6C2"/>
-     <circle cx="88" cy="103" r="5" fill="#A8D8FF"/><circle cx="32" cy="103" r="5" fill="#C9B3FF"/>
-     <circle cx="15" cy="49" r="5" fill="#FFE08A"/>` },
-
-  { id:'donut', num:[50, 50], svg:
-    // glitter donut: pink icing, rainbow sprinkles, white glitter
-    `<circle cx="60" cy="60" r="54" fill="#E9B77E"/>
-     <path d="M60 12 Q74 10 82 18 Q96 20 100 34 Q110 44 106 58 Q112 72 102 82 Q100 98 84 100 Q74 110 60 106 Q46 110 36 100 Q20 98 18 82 Q8 72 14 58 Q10 44 20 34 Q24 20 38 18 Q46 10 60 12Z" fill="#FF9EC8"/>
-     <circle cx="60" cy="60" r="18" fill="#F9EEFF" stroke="#E08AB5" stroke-width="3"/>
-     <g stroke-width="4.5" stroke-linecap="round">
-       <path d="M30 34 l7 4" stroke="#FFE08A"/><path d="M84 26 l6 -5" stroke="#8EE6C2"/>
-       <path d="M96 64 l2 8" stroke="#A8D8FF"/><path d="M78 92 l7 3" stroke="#C9B3FF"/>
-       <path d="M34 88 l-5 6" stroke="#fff"/><path d="M20 60 l1 -8" stroke="#8EE6C2"/>
-       <path d="M58 22 l8 1" stroke="#A8D8FF"/><path d="M48 100 l8 -2" stroke="#FFE08A"/>
-     </g>
-     ${sparkle4(40, 24, 5, '#fff')}${sparkle4(92, 44, 4, '#fff')}${sparkle4(26, 76, 4, '#fff')}${sparkle4(90, 86, 5, '#fff')}` },
-
-  { id:'moon-candy', num:[50, 52], svg:
-    // round wrapped candy with a little moon and stars
-    `<path d="M20 62 L0 42 Q-2 62 0 82 Z" fill="#B9A0F5" stroke="#9C7AD6" stroke-width="3" stroke-linejoin="round"/>
-     <path d="M100 62 L120 42 Q122 62 120 82 Z" fill="#B9A0F5" stroke="#9C7AD6" stroke-width="3" stroke-linejoin="round"/>
-     <circle cx="60" cy="62" r="46" fill="#D9C8FF" stroke="#9C7AD6" stroke-width="3"/>
-     <path d="M30 40 A36 36 0 0 1 60 22" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" opacity=".8"/>
-     <path d="M62 15 A10 10 0 1 0 74 27 A8 8 0 1 1 62 15Z" fill="#FFE08A"/>
-     ${sparkle4(90, 40, 5, '#FFE08A')}${sparkle4(28, 86, 5, '#FFF')}${sparkle4(92, 90, 4, '#FFE08A')}` },
-
-  { id:'apple', num:[50, 56], svg:
-    // sparkle apple: pink apple, leaf and twinkles
-    `<path d="M60 30 C40 14 8 22 10 58 C12 96 40 118 60 106 C80 118 108 96 110 58 C112 22 80 14 60 30Z" fill="#FF8FB1" stroke="#E86A94" stroke-width="3"/>
-     <path d="M28 46 Q24 60 30 72" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" opacity=".7"/>
-     <path d="M60 32 Q58 18 64 8" stroke="#A0703C" stroke-width="5" fill="none" stroke-linecap="round"/>
-     <path d="M64 16 Q78 2 94 10 Q82 24 64 16Z" fill="#8EE6C2" stroke="#3FBF8F" stroke-width="2"/>
-     ${sparkle4(16, 18, 7, '#FFE08A')}${sparkle4(106, 30, 6, '#C9B3FF')}${sparkle4(104, 106, 6, '#FFE08A')}` },
-
-  { id:'cotton-candy', num:[50, 47], svg:
-    // cloud cotton candy on a stick
-    `<path d="M60 86 L60 118" stroke="#F6C77A" stroke-width="8" stroke-linecap="round"/>
-     <circle cx="34" cy="62" r="24" fill="#FFC8E1"/><circle cx="86" cy="62" r="24" fill="#CDEBFF"/>
-     <circle cx="60" cy="38" r="28" fill="#E6DAFF"/><circle cx="36" cy="38" r="18" fill="#C9F5E3"/>
-     <circle cx="84" cy="36" r="18" fill="#FFC8E1"/><circle cx="48" cy="78" r="20" fill="#E6DAFF"/>
-     <circle cx="74" cy="78" r="20" fill="#FFC8E1"/><circle cx="60" cy="58" r="26" fill="#FFF0F8"/>
-     ${sparkle4(18, 26, 6, '#fff')}${sparkle4(104, 44, 5, '#fff')}${sparkle4(98, 90, 5, '#FFE08A')}` },
+  { id:'cupcake', num:[50, 75] },
+  { id:'star-cookie', num:[50, 55] },
+  { id:'donut', num:[50, 50] },
+  { id:'moon-candy', num:[48, 42] },
+  { id:'apple', num:[50, 62] },
+  { id:'cotton-candy', num:[50, 42] }
 ];
 
 /* =====================================================================
@@ -691,67 +640,25 @@ function makeChoices(q){
 /* =====================================================================
    DRAWING: unicorn, counting items and icons (inline SVG).
    ===================================================================== */
-const MANE = ['#FFB3D9', '#C9B3FF', '#A8EED3', '#A8D8FF', '#FFE08A'];
 
+// The unicorn is built from 11 picture layers (assets/unicorn-*.png), all on the
+// same 1200 x 1320 canvas, stacked inside a 300 x 330 SVG box. The groups keep
+// their class names so the CSS can move each part (head shake, chewing, blink...).
 function unicornSVG(uid){
-  const c = (x, y, r, i) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${MANE[i % MANE.length]}"/>`;
+  const L = (name, cls = '') => `<image${cls ? ` class="${cls}"` : ''} href="assets/unicorn-${name}.png" x="0" y="0" width="300" height="330"/>`;
   return `<svg class="unicorn" viewBox="0 0 300 330" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="${uid}horn" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#FFF3B8"/><stop offset=".6" stop-color="#FFD35C"/><stop offset="1" stop-color="#F5B83D"/>
-    </linearGradient>
-    <radialGradient id="${uid}body" cx=".4" cy=".35" r=".8">
-      <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#F6F0FF"/>
-    </radialGradient>
-  </defs>
   <g class="u-all"><g class="u-wig">
-    <g class="u-wings">
-      <g class="u-wing-l"><path d="M104 250 C70 206 26 214 26 244 C38 242 42 252 36 262 C50 258 56 270 50 280 C70 276 90 268 104 258Z" fill="#fff" stroke="#D9C6F2" stroke-width="4" stroke-linejoin="round"/>
-        <path d="M96 252 C74 230 50 230 40 240" stroke="#FFC8E1" stroke-width="5" fill="none" stroke-linecap="round"/></g>
-      <g class="u-wing-r"><path d="M196 250 C230 206 274 214 274 244 C262 242 258 252 264 262 C250 258 244 270 250 280 C230 276 210 268 196 258Z" fill="#fff" stroke="#D9C6F2" stroke-width="4" stroke-linejoin="round"/>
-        <path d="M204 252 C226 230 250 230 260 240" stroke="#CDEBFF" stroke-width="5" fill="none" stroke-linecap="round"/></g>
-    </g>
-    <g class="u-tail">${c(226, 292, 18, 0)}${c(242, 270, 15, 2)}${c(240, 306, 13, 3)}${c(254, 288, 11, 1)}</g>
-    <g class="u-body">
-      <ellipse cx="150" cy="272" rx="72" ry="50" fill="url(#${uid}body)" stroke="#D9C6F2" stroke-width="4"/>
-      <rect x="110" y="262" width="32" height="58" rx="16" fill="#fff" stroke="#D9C6F2" stroke-width="4"/>
-      <rect x="158" y="262" width="32" height="58" rx="16" fill="#fff" stroke="#D9C6F2" stroke-width="4"/>
-      <rect x="110" y="300" width="32" height="20" rx="10" fill="#D9C6FF"/>
-      <rect x="158" y="300" width="32" height="20" rx="10" fill="#D9C6FF"/>
-      <path d="M150 246 C144 238 132 242 136 252 C139 258 150 264 150 264 C150 264 161 258 164 252 C168 242 156 238 150 246Z" fill="#FFC8E1"/>
-    </g>
+    <g class="u-wings">${L('wing-left', 'u-wing-l')}${L('wing-right', 'u-wing-r')}</g>
+    <g class="u-tail">${L('tail')}</g>
+    <g class="u-body">${L('body')}</g>
     <g class="u-head">
-      <g class="u-mane">
-        ${c(224, 108, 30, 0)}${c(240, 150, 30, 1)}${c(236, 192, 28, 2)}${c(224, 230, 25, 3)}${c(206, 258, 20, 4)}
-        ${c(78, 110, 26, 1)}${c(64, 150, 26, 0)}${c(70, 188, 24, 3)}${c(84, 222, 20, 2)}
-      </g>
-      <path d="M90 108 L94 50 L134 88 Z" fill="#fff" stroke="#D9C6F2" stroke-width="4" stroke-linejoin="round"/>
-      <path d="M98 96 L100 66 L120 86 Z" fill="#FFC8E1"/>
-      <path d="M210 108 L206 50 L166 88 Z" fill="#fff" stroke="#D9C6F2" stroke-width="4" stroke-linejoin="round"/>
-      <path d="M202 96 L200 66 L180 86 Z" fill="#FFC8E1"/>
-      <ellipse class="u-face" cx="150" cy="152" rx="80" ry="70" fill="url(#${uid}body)" stroke="#D9C6F2" stroke-width="4"/>
-      ${c(124, 92, 18, 0)}${c(176, 92, 18, 1)}${c(150, 98, 14, 3)}
-      <path d="M134 96 L150 18 L166 96 Q150 104 134 96Z" fill="url(#${uid}horn)" stroke="#E8A92B" stroke-width="3" stroke-linejoin="round"/>
-      <path d="M139 80 L160 72 M143 62 L157 56 M146 44 L154 40" stroke="#E8A92B" stroke-width="3.5" stroke-linecap="round"/>
-      <g class="u-sparkle">${sparkle4(178, 40, 9, '#FFE08A')}</g>
-      <g class="u-eyes">
-        <ellipse cx="120" cy="148" rx="13" ry="16" fill="#4A2F6B"/><ellipse cx="180" cy="148" rx="13" ry="16" fill="#4A2F6B"/>
-        <circle cx="125" cy="142" r="5" fill="#fff"/><circle cx="185" cy="142" r="5" fill="#fff"/>
-        <circle cx="116" cy="155" r="2.2" fill="#fff"/><circle cx="176" cy="155" r="2.2" fill="#fff"/>
-        <path d="M108 138 l-8 -5 M111 133 l-5 -8 M192 138 l8 -5 M189 133 l5 -8" stroke="#4A2F6B" stroke-width="3.5" stroke-linecap="round"/>
-      </g>
-      <g class="u-eyes-happy">
-        <path d="M106 152 Q120 134 134 152 M166 152 Q180 134 194 152" stroke="#4A2F6B" stroke-width="5" fill="none" stroke-linecap="round"/>
-      </g>
-      <ellipse cx="96" cy="178" rx="14" ry="9" fill="#FFB3D1" opacity=".75"/>
-      <ellipse cx="204" cy="178" rx="14" ry="9" fill="#FFB3D1" opacity=".75"/>
-      <ellipse cx="150" cy="190" rx="46" ry="31" fill="#FFEAF4"/>
-      <ellipse cx="136" cy="180" rx="4.5" ry="3.2" fill="#E6A3C4"/><ellipse cx="164" cy="180" rx="4.5" ry="3.2" fill="#E6A3C4"/>
-      <path class="u-mouth-closed" d="M133 198 Q150 214 167 198" stroke="#8A4D7A" stroke-width="4.5" fill="none" stroke-linecap="round"/>
-      <g class="u-mouth-open">
-        <ellipse cx="150" cy="204" rx="17" ry="14" fill="#8A3D6E"/>
-        <ellipse cx="150" cy="211" rx="10" ry="5.5" fill="#FF8FB8"/>
-      </g>
+      <g class="u-mane">${L('mane')}</g>
+      ${L('head')}
+      <g class="u-eyes">${L('eyes-open')}</g>
+      <g class="u-eyes-closed">${L('eyes-closed')}</g>
+      <g class="u-eyes-happy">${L('eyes-happy')}</g>
+      <g class="u-mouth-closed">${L('mouth-closed')}</g>
+      <g class="u-mouth-open">${L('mouth-open')}</g>
       <circle class="u-mouth-anchor" cx="150" cy="204" r="2" fill="none"/>
     </g>
   </g></g>
@@ -774,7 +681,7 @@ const ICONS = {
   noteOff: `<svg viewBox="0 0 40 40"><path d="M15 29 V9 L33 5 V25" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/><ellipse cx="11" cy="29" rx="6" ry="5" fill="currentColor"/><ellipse cx="29" cy="25" rx="6" ry="5" fill="currentColor"/><path d="M5 5 L35 35" stroke="#F27AB0" stroke-width="5" stroke-linecap="round"/></svg>`,
   house:   `<svg viewBox="0 0 40 40"><path d="M5 20 L20 6 L35 20" stroke="currentColor" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 17 V34 H30 V17" fill="currentColor"/><rect x="16.5" y="23" width="7" height="11" rx="3.5" fill="#fff"/></svg>`,
   again:   `<svg viewBox="0 0 40 40"><path d="M31 21 A11 11 0 1 1 26 11" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M22 4 L31 11 L22 17Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>`,
-  star:    `<svg viewBox="0 0 40 40"><path d="${starPath(20, 21.5, 19, 9.5)}" fill="#FFD35C" stroke="#E8A92B" stroke-width="2.5" stroke-linejoin="round"/><circle cx="15" cy="16" r="3" fill="#fff" opacity=".8"/></svg>`,
+  star:    `<img src="assets/star-reward.png" alt="" draggable="false">`,
   heart:   `<svg viewBox="0 0 40 40"><path d="M20 35 C8 26 2 19 4 12 C6 4 16 3 20 11 C24 3 34 4 36 12 C38 19 32 26 20 35Z" fill="#FF8FB8" stroke="#fff" stroke-width="2.5"/></svg>`,
   pip:     `<svg viewBox="0 0 40 40"><path d="${starPath(20, 21.5, 18, 8.5)}" fill="#fff" stroke="rgba(0,0,0,.08)" stroke-width="2" stroke-linejoin="round"/></svg>`,
 };
@@ -931,7 +838,7 @@ function renderFoods(){
   $('tray').innerHTML = choices.map((v, i) => {
     const f = kinds[i];
     return `<div class="food" data-value="${v}" aria-label="${v}" style="animation-delay:${200 + i * 120}ms">
-      <div class="pop"><div class="float"><svg viewBox="-4 -12 128 136">${f.svg}</svg>
+      <div class="pop"><div class="float"><img src="assets/food-${f.id}.png" alt="" draggable="false">
       <span class="num${v > 9 ? ' two' : ''}" style="left:${f.num[0]}%;top:${f.num[1]}%">${v}</span></div></div></div>`;
   }).join('');
   $('tray').querySelectorAll('.food').forEach(el => {
